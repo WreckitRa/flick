@@ -1,0 +1,165 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  AGENCY
+  MERCHANT
+}
+
+model User {
+  id          String   @id @default(cuid())
+  firebaseUid String?  @unique
+  email       String?  @unique
+  phone       String?  @unique
+  passwordHash String?
+  displayName String?
+  photoUrl    String?
+  roles       UserRole[] @default([USER])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  profile Profile?
+  answers UserAnswer[]
+  points  UserPoint[]
+
+  @@index([email])
+  @@index([phone])
+}
+
+model Profile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  country           String   @default("Lebanon")
+  onboardingCompleted Boolean @default(false)
+  marketingOptIn    Boolean  @default(false)
+  lastLoginAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum SurveyType {
+  GUEST
+  DAILY
+}
+
+enum QuestionType {
+  SINGLE_CHOICE
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  RATING
+}
+
+model Survey {
+  id            String      @id @default(cuid())
+  title         String
+  description   String?
+  type          SurveyType
+  published     Boolean     @default(false)
+  isGuestSurvey Boolean     @default(false) // Only one can be true
+  coinsReward   Int         @default(10) // Total coins for completing survey
+  order         Int         @default(0) // For ordering surveys
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  questions Question[]
+  answers   UserAnswer[]
+
+  @@index([published])
+  @@index([type])
+  @@index([isGuestSurvey])
+}
+
+model Question {
+  id           String       @id @default(cuid())
+  surveyId     String
+  text         String
+  type         QuestionType
+  order        Int          @default(0)
+  coinsReward  Int          @default(0) // Coins for correct answer
+  explanation  String?      // Shown after answering (gamification)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  survey  Survey  @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  options Option[]
+  answers UserAnswer[]
+
+  @@index([surveyId])
+  @@index([surveyId, order])
+}
+
+model Option {
+  id          String   @id @default(cuid())
+  questionId  String
+  text        String
+  emoji       String?  // For gamification (🎯, ✅, etc.)
+  isCorrect   Boolean  @default(false)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
+  @@index([questionId, order])
+}
+
+model UserAnswer {
+  id          String   @id @default(cuid())
+  userId      String
+  surveyId    String
+  questionId  String
+  answer      String   // JSON array of selected option IDs or text
+  isCorrect   Boolean
+  coinsEarned Int      @default(0)
+  submittedAt DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  survey   Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([surveyId])
+  @@index([questionId])
+  @@index([userId, surveyId])
+}
+
+model UserPoint {
+  id          String   @id @default(cuid())
+  userId      String
+  amount      Int      // Can be positive (earned) or negative (spent)
+  reason      String   // e.g., "Survey completed", "Correct answer", "Daily bonus"
+  surveyId    String?  // Optional: link to survey if points from survey
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Device {
+  id                  String   @id @default(cuid())
+  deviceId            String   @unique // Unique device identifier (installation ID or fingerprint)
+  onboardingCompleted Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([deviceId])
+}
+

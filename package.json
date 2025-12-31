@@ -1,0 +1,48 @@
+{
+  "private": true,
+  "name": "flick",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Flick - Gamified daily survey mobile app",
+  "scripts": {
+    "dev:mobile": "pnpm --filter mobile dev",
+    "dev:backend": "pnpm --filter backend dev",
+    "dev:admin": "pnpm --filter admin dev",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "prisma db seed",
+    "db:studio": "prisma studio",
+    "db:push": "prisma db push",
+    "type-check": "pnpm -r run type-check",
+    "lint": "pnpm -r run lint"
+  },
+  "workspaces": [
+    "mobile",
+    "backend",
+    "shared",
+    "admin"
+  ],
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "5.22.0",
+    "superjson": "2.2.6"
+  },
+  "devDependencies": {
+    "@types/node": "20.10.0",
+    "prisma": "5.22.0",
+    "tsx": "4.7.0",
+    "typescript": "5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "react": "18.2.0",
+      "react-dom": "18.2.0",
+      "react-native": "0.73.6"
+    }
+  }
+}

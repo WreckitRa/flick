@@ -1,0 +1,225 @@
+=============================
+ENGINEERING PRINCIPLES
+=============================
+
+Always code like a top senior engineer.
+
+Simplicity > cleverness > abstraction.
+
+Minimize dependencies — add a package only if absolutely required.
+
+Prefer native / built-in solutions over external libraries.
+
+Ask clarifying questions when unsure — never assume requirements.
+
+Code must compile cleanly with zero warnings.
+
+=============================
+ARCHITECTURE & PATTERNS
+=============================
+
+Follow existing monorepo structure → mobile, backend, admin, shared.
+
+Reuse shared logic — never duplicate features.
+
+Prefer small, meaningful files.
+
+Follow consistent type usage across layers.
+
+Keep every module single-responsibility.
+
+=============================
+PLATFORM STABILITY RULES
+(Critical → prevents breaking Expo / React / backend)
+=============================
+❗ Dependency Discipline
+
+Never upgrade, bump, or change dependency versions unless explicitly approved by Raphael.
+
+Never introduce React 19 or Expo SDK upgrades automatically.
+
+Never use pnpm update, npm update, or run upgrade wizards.
+
+No new heavy analytics libraries, UI kits, OR state managers unless explicitly requested.
+
+❗ Version Pinning Enforcement
+
+Assume version pinning is intentional.
+
+If proposing a dependency, suggest exact versions, not ranges.
+
+❗ Tooling Consistency
+
+Assume Node 18 + pnpm asdf environment is fixed.
+
+Do not suggest replacing pnpm with npm / yarn.
+
+=============================
+BACKEND RULES (tRPC + Prisma)
+=============================
+
+Strict TypeScript everywhere.
+
+All inputs must be validated via Zod.
+
+Prisma queries must be clean, efficient, and typed.
+
+Never generate Prisma migrations automatically unless asked.
+
+Never rename database tables automatically.
+
+Never commit unreviewed schema changes.
+
+API responses must be structured and predictable.
+
+=============================
+FRONTEND RULES (Expo + RN)
+=============================
+
+UI follows Flick brand:
+
+Bright blue + Yellow palette
+
+Friendly, joyful, gamified minimalism
+
+Prefer lightweight native UI and animations.
+
+Keep screens simple, maintainable, and focused.
+
+Optimize re-renders.
+
+React Query handles server state — avoid custom caching unless needed.
+
+=============================
+ADMIN WEB RULES (Next.js)
+=============================
+
+Next.js should remain lean — only basic UI + admin actions.
+
+Never introduce server-side libraries affecting Expo/mobile unwantedly.
+
+Never introduce React Server Components without approval.
+
+=============================
+SHARED LIB RULES
+=============================
+
+Shared types must stay pure: no platform-specific imports.
+
+Never import React Native libraries into shared code.
+
+=============================
+UI / GAMIFICATION RULES
+=============================
+
+Delightful but minimal.
+
+Micro interactions > huge animations.
+
+Streak mechanics, confetti, progress, coins are tasteful, not noisy.
+
+Keep art assets small and cached.
+
+=============================
+CLEAN CODE RULES
+=============================
+
+No unused imports or commented blocks.
+
+No duplicate logic — extract and reuse.
+
+Strong typing everywhere; avoid any.
+
+Human-friendly naming.
+
+=============================
+PERFORMANCE RULES
+=============================
+
+Avoid unnecessary state.
+
+Keep bundle size small.
+
+Memoize where appropriate.
+
+Cache data via React Query.
+
+=============================
+SECURITY RULES
+=============================
+
+Validate all user input.
+
+Never expose secrets.
+
+Never commit environment configuration to git.
+
+=============================
+CURSOR BEHAVIOR RULES
+(The most important section — prevents AI breaking your system)
+=============================
+🔹 Think First
+
+Ask:
+
+“Is this the smallest, safest, most scalable change?”
+
+🔹 No Random Changes
+
+Do not auto-create major new components or structure unless requested.
+
+Do not refactor entire files unless instructed.
+
+🔹 Respect Architecture
+
+Never restructure folders without explicit approval.
+
+Never rename key directories (mobile, backend, shared, admin).
+
+🔹 Version Safety
+
+Cursor must never propose or execute automatic upgrades
+to React, Expo, Prisma, Firebase, Posthog, or Next.js.
+
+🔹 Packages
+
+If you believe a new dependency is needed:
+
+explain why
+
+provide impact
+
+provide exact version
+
+wait for approval before adding
+
+🔹 Prisma Safety
+
+Never auto-apply:
+
+migrations
+
+schema rewrites
+
+model renames
+
+Unless explicitly requested.
+
+🔹 API Discipline
+
+Ask before:
+
+adding new endpoints
+
+changing route signatures
+
+modifying authentication
+
+🔹 Clarify Before Acting
+
+If instructions conflict with rules →
+pause, ask for confirmation, and explain risk.
+
+=============================
+END OF RULES
+=============================

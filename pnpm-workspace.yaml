@@ -1,0 +1,12 @@
+packages:
+  - mobile
+  - backend
+  - shared
+  - admin
+
+ignoredBuiltDependencies:
+  - '@prisma/client'
+  - '@prisma/engines'
+  - esbuild
+  - prisma
+  - protobufjs
