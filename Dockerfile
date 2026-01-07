@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:18-slim
 
 # Enable corepack for pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
