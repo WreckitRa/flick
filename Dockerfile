@@ -1,5 +1,8 @@
 FROM node:18-slim
 
+# Install OpenSSL for Prisma
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
 # Enable corepack for pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
