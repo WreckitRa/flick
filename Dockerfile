@@ -24,4 +24,5 @@ RUN pnpm build
 RUN pnpm run migrate:deploy
 
 # Start server
+WORKDIR /app/backend
 CMD ["node", "dist/index.js"]
