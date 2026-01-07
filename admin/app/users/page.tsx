@@ -1,12 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { AuthGuard } from '@/components/AuthGuard';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { trpc } from '@/lib/trpc';
 
 export default function UsersPage() {
-  const router = useRouter();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -54,137 +53,255 @@ export default function UsersPage() {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-6 flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Users</h1>
-              <p className="text-gray-600 mt-1">Manage all user accounts</p>
+      <DashboardLayout>
+        <div className="p-8">
+          <div className="max-w-7xl mx-auto space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-slate-900 mb-2">Users</h1>
+                <p className="text-slate-600">Manage all user accounts and profiles</p>
+              </div>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl font-semibold shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-200 hover:scale-105"
+              >
+                <span>➕</span>
+                <span>Add User</span>
+              </button>
             </div>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              + Add User
-            </button>
-          </div>
 
-          {/* Search */}
-          <div className="mb-6">
-            <input
-              type="text"
-              placeholder="Search by email, phone, or name..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          {/* Users Table */}
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            {isLoading ? (
-              <div className="p-8 text-center text-gray-500">Loading...</div>
-            ) : !data?.users.length ? (
-              <div className="p-8 text-center text-gray-500">No users found</div>
-            ) : (
-              <>
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Email / Phone
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Name
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Roles
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Created
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {data.users.map((user) => (
-                      <tr key={user.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{user.email || user.phone}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {user.displayName || '—'}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex gap-1">
-                            {user.roles.map((role) => (
-                              <span
-                                key={role}
-                                className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800"
-                              >
-                                {role}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(user.createdAt).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            onClick={() => handleEdit(user)}
-                            className="text-blue-600 hover:text-blue-900 mr-4"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(user.id)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                {/* Pagination */}
-                {data.pagination.totalPages > 1 && (
-                  <div className="px-6 py-4 border-t border-gray-200 flex justify-between items-center">
-                    <div className="text-sm text-gray-700">
-                      Showing {((page - 1) * data.pagination.limit) + 1} to{' '}
-                      {Math.min(page * data.pagination.limit, data.pagination.total)} of{' '}
-                      {data.pagination.total} users
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setPage((p) => Math.max(1, p - 1))}
-                        disabled={page === 1}
-                        className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                      >
-                        Previous
-                      </button>
-                      <button
-                        onClick={() => setPage((p) => p + 1)}
-                        disabled={page >= data.pagination.totalPages}
-                        className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                      >
-                        Next
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </>
+            {/* Stats Cards */}
+            {data && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="glass rounded-xl p-4">
+                  <p className="text-sm font-medium text-slate-600 mb-1">Total Users</p>
+                  <p className="text-2xl font-bold text-slate-900">{data.pagination.total}</p>
+                </div>
+                <div className="glass rounded-xl p-4">
+                  <p className="text-sm font-medium text-slate-600 mb-1">Active Streaks</p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {data.users.filter(u => u.profile?.currentStreak && u.profile.currentStreak > 0).length}
+                  </p>
+                </div>
+                <div className="glass rounded-xl p-4">
+                  <p className="text-sm font-medium text-slate-600 mb-1">With Profiles</p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {data.users.filter(u => u.profile).length}
+                  </p>
+                </div>
+                <div className="glass rounded-xl p-4">
+                  <p className="text-sm font-medium text-slate-600 mb-1">Page</p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {page} / {data.pagination.totalPages}
+                  </p>
+                </div>
+              </div>
             )}
+
+            {/* Search */}
+            <div className="glass rounded-xl p-4">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <span className="text-slate-400 text-xl">🔍</span>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search by email, phone, or name..."
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Users Table */}
+            <div className="glass rounded-xl overflow-hidden">
+              {isLoading ? (
+                <div className="p-12 text-center">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
+                  <p className="mt-4 text-slate-500">Loading users...</p>
+                </div>
+              ) : !data?.users.length ? (
+                <div className="p-12 text-center">
+                  <div className="text-6xl mb-4">👤</div>
+                  <h3 className="text-xl font-semibold text-slate-900 mb-2">No users found</h3>
+                  <p className="text-slate-600 mb-6">Try adjusting your search or create a new user</p>
+                  <button
+                    onClick={() => setShowCreateModal(true)}
+                    className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+                  >
+                    Create User
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-slate-200">
+                      <thead className="bg-slate-50/80">
+                        <tr>
+                          <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                            User
+                          </th>
+                          <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                            Profile
+                          </th>
+                          <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                            Coins / Level
+                          </th>
+                          <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                            Streak
+                          </th>
+                          <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                            Roles
+                          </th>
+                          <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                            Created
+                          </th>
+                          <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-slate-100">
+                        {data.users.map((user) => (
+                          <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div>
+                                <div className="text-sm font-semibold text-slate-900">
+                                  {user.displayName || '—'}
+                                </div>
+                                <div className="text-xs text-slate-500 mt-1">
+                                  {user.email || user.phone || '—'}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-slate-900">
+                                {user.profile?.gender ? (
+                                  <span className="inline-flex items-center gap-1">
+                                    {user.profile.gender.replace('_', ' ').toLowerCase()}
+                                  </span>
+                                ) : (
+                                  '—'
+                                )}
+                                {user.profile?.ageBucket && (
+                                  <span className="ml-2 text-xs text-slate-500">
+                                    • {user.profile.ageBucket}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {user.profile?.totalCoins !== undefined ? (
+                                <div>
+                                  <div className="text-sm font-semibold text-yellow-600">
+                                    🪙 {user.profile.totalCoins} coins
+                                  </div>
+                                  <div className="text-xs text-slate-500">
+                                    Level {Math.floor((user.profile.totalCoins || 0) / 100) + 1}
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-sm text-slate-400">—</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {user.profile?.currentStreak ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-lg">🔥</span>
+                                  <div>
+                                    <div className="text-sm font-semibold text-orange-600">
+                                      {user.profile.currentStreak} days
+                                    </div>
+                                    {user.profile.longestStreak > user.profile.currentStreak && (
+                                      <div className="text-xs text-slate-500">
+                                        Best: {user.profile.longestStreak}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-sm text-slate-400">—</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex gap-1.5 flex-wrap">
+                                {user.roles.map((role) => (
+                                  <span
+                                    key={role}
+                                    className="px-2.5 py-1 text-xs font-medium rounded-full bg-gradient-to-r from-blue-100 to-blue-50 text-blue-700 border border-blue-200/60"
+                                  >
+                                    {role}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                              {new Date(user.createdAt).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => handleEdit(user)}
+                                  className="px-3 py-1.5 text-blue-600 hover:bg-blue-50 rounded-lg font-medium transition-colors"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(user.id)}
+                                  className="px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Pagination */}
+                  {data.pagination.totalPages > 1 && (
+                    <div className="px-6 py-4 border-t border-slate-200 bg-slate-50/50 flex items-center justify-between">
+                      <div className="text-sm text-slate-600">
+                        Showing <span className="font-semibold text-slate-900">
+                          {((page - 1) * data.pagination.limit) + 1}
+                        </span> to{' '}
+                        <span className="font-semibold text-slate-900">
+                          {Math.min(page * data.pagination.limit, data.pagination.total)}
+                        </span> of{' '}
+                        <span className="font-semibold text-slate-900">{data.pagination.total}</span> users
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setPage((p) => Math.max(1, p - 1))}
+                          disabled={page === 1}
+                          className="px-4 py-2 border border-slate-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white transition-colors font-medium text-slate-700"
+                        >
+                          Previous
+                        </button>
+                        <button
+                          onClick={() => setPage((p) => p + 1)}
+                          disabled={page >= data.pagination.totalPages}
+                          className="px-4 py-2 border border-slate-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white transition-colors font-medium text-slate-700"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
 
@@ -209,7 +326,7 @@ export default function UsersPage() {
             isLoading={updateMutation.isLoading}
           />
         )}
-      </div>
+      </DashboardLayout>
     </AuthGuard>
   );
 }
@@ -256,17 +373,20 @@ function CreateUserModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-        <h2 className="text-2xl font-bold mb-4">Create User</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <div className="flex gap-2 mb-2">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="glass rounded-2xl p-8 max-w-md w-full shadow-2xl animate-slide-up">
+        <h2 className="text-2xl font-bold text-slate-900 mb-6">Create User</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">Authentication Method</label>
+            <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setAuthMethod('email')}
-                className={`px-4 py-2 rounded ${
-                  authMethod === 'email' ? 'bg-blue-600 text-white' : 'bg-gray-200'
+                className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all ${
+                  authMethod === 'email'
+                    ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
               >
                 Email
@@ -274,67 +394,105 @@ function CreateUserModal({
               <button
                 type="button"
                 onClick={() => setAuthMethod('phone')}
-                className={`px-4 py-2 rounded ${
-                  authMethod === 'phone' ? 'bg-blue-600 text-white' : 'bg-gray-200'
+                className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all ${
+                  authMethod === 'phone'
+                    ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
               >
                 Phone
               </button>
             </div>
-            {authMethod === 'email' ? (
+          </div>
+          {authMethod === 'email' ? (
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">Email *</label>
               <input
                 type="email"
-                placeholder="Email"
+                placeholder="user@example.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 required
               />
-            ) : (
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">Phone *</label>
               <input
                 type="tel"
-                placeholder="Phone"
+                placeholder="+1234567890"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 required
               />
-            )}
-          </div>
-          <div className="mb-4">
+            </div>
+          )}
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">Password *</label>
             <input
               type="password"
-              placeholder="Password (min 8 characters)"
+              placeholder="Minimum 8 characters"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               required
               minLength={8}
             />
           </div>
-          <div className="mb-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">Display Name</label>
             <input
               type="text"
-              placeholder="Display Name (optional)"
+              placeholder="Optional"
               value={formData.displayName}
               onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
             />
           </div>
-          <div className="flex gap-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">Roles</label>
+            <div className="flex gap-2 flex-wrap">
+              {['USER', 'ADMIN', 'AGENCY', 'MERCHANT'].map((role) => (
+                <label key={role} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={formData.roles.includes(role)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setFormData({
+                          ...formData,
+                          roles: [...formData.roles, role],
+                        });
+                      } else {
+                        setFormData({
+                          ...formData,
+                          roles: formData.roles.filter((r) => r !== role),
+                        });
+                      }
+                    }}
+                    className="mr-2 rounded"
+                  />
+                  <span className="text-sm text-slate-700">{role}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-3 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="flex-1 px-4 py-3 border border-slate-300 rounded-xl hover:bg-slate-50 font-medium text-slate-700 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl hover:shadow-lg font-semibold disabled:opacity-50 transition-all"
             >
-              {isLoading ? 'Creating...' : 'Create'}
+              {isLoading ? 'Creating...' : 'Create User'}
             </button>
           </div>
         </form>
@@ -381,30 +539,30 @@ function EditUserModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-        <h2 className="text-2xl font-bold mb-4">Edit User</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="glass rounded-2xl p-8 max-w-md w-full shadow-2xl animate-slide-up">
+        <h2 className="text-2xl font-bold text-slate-900 mb-6">Edit User</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">Email</label>
             <input
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
             />
           </div>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">Phone</label>
             <input
               type="tel"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
             />
           </div>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
               New Password (leave blank to keep current)
             </label>
             <input
@@ -412,20 +570,20 @@ function EditUserModal({
               placeholder="Leave blank to keep current password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
             />
           </div>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">Display Name</label>
             <input
               type="text"
               value={formData.displayName}
               onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
             />
           </div>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Roles</label>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">Roles</label>
             <div className="flex gap-2 flex-wrap">
               {['USER', 'ADMIN', 'AGENCY', 'MERCHANT'].map((role) => (
                 <label key={role} className="flex items-center">
@@ -445,27 +603,27 @@ function EditUserModal({
                         });
                       }
                     }}
-                    className="mr-2"
+                    className="mr-2 rounded"
                   />
-                  {role}
+                  <span className="text-sm text-slate-700">{role}</span>
                 </label>
               ))}
             </div>
           </div>
-          <div className="flex gap-4">
+          <div className="flex gap-3 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="flex-1 px-4 py-3 border border-slate-300 rounded-xl hover:bg-slate-50 font-medium text-slate-700 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl hover:shadow-lg font-semibold disabled:opacity-50 transition-all"
             >
-              {isLoading ? 'Saving...' : 'Save'}
+              {isLoading ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </form>
@@ -473,8 +631,3 @@ function EditUserModal({
     </div>
   );
 }
-
-
-
-
-

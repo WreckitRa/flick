@@ -50,8 +50,20 @@ export const userRouter = router({
         prisma.user.count({ where }),
       ]);
 
+      // Calculate totalCoins for each user
+      const usersWithCoins = await Promise.all(
+        users.map(async (user) => {
+          const totalCoinsResult = await prisma.userPoint.aggregate({
+            where: { userId: user.id },
+            _sum: { amount: true },
+          });
+          const totalCoins = totalCoinsResult._sum.amount || 0;
+          return { ...user, totalCoins };
+        })
+      );
+
       return {
-        users: users.map((user) => ({
+        users: usersWithCoins.map((user) => ({
           id: user.id,
           email: user.email,
           phone: user.phone,
@@ -65,6 +77,13 @@ export const userRouter = router({
                 onboardingCompleted: user.profile.onboardingCompleted,
                 marketingOptIn: user.profile.marketingOptIn,
                 lastLoginAt: user.profile.lastLoginAt?.toISOString() || null,
+                gender: user.profile.gender,
+                ageBucket: user.profile.ageBucket,
+                profileCompletionRewardGiven: user.profile.profileCompletionRewardGiven,
+                currentStreak: user.profile.currentStreak,
+                longestStreak: user.profile.longestStreak,
+                lastDailySurveyDate: user.profile.lastDailySurveyDate?.toISOString() || null,
+                totalCoins: user.totalCoins,
               }
             : null,
         })),
@@ -105,6 +124,7 @@ export const userRouter = router({
             lastLoginAt: user.profile.lastLoginAt?.toISOString() || null,
             createdAt: user.profile.createdAt.toISOString(),
             updatedAt: user.profile.updatedAt.toISOString(),
+            lastDailySurveyDate: user.profile.lastDailySurveyDate?.toISOString() || null,
           }
         : null,
     };

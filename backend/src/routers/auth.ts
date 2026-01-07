@@ -29,6 +29,9 @@ function generateUserToken(userId: string): string {
   });
 }
 
+// Valid age buckets
+const VALID_AGE_BUCKETS = ['18-24', '25-34', '35-44', '45-54', '55-64', '65+'] as const;
+
 export const authRouter = router({
   signup: publicProcedure
     .input(
@@ -350,6 +353,12 @@ export const authRouter = router({
             onboardingCompleted: true,
             marketingOptIn: true,
             lastLoginAt: true,
+            gender: true,
+            ageBucket: true,
+            profileCompletionRewardGiven: true,
+            currentStreak: true,
+            longestStreak: true,
+            lastDailySurveyDate: true,
           },
         },
       },
@@ -358,6 +367,13 @@ export const authRouter = router({
     if (!user) {
       throw new Error('User not found');
     }
+
+    // Calculate total coins from UserPoint records
+    const totalCoinsResult = await prisma.userPoint.aggregate({
+      where: { userId },
+      _sum: { amount: true },
+    });
+    const totalCoins = totalCoinsResult._sum.amount || 0;
 
     return {
       id: user.id,
@@ -371,9 +387,95 @@ export const authRouter = router({
             onboardingCompleted: user.profile.onboardingCompleted,
             marketingOptIn: user.profile.marketingOptIn,
             lastLoginAt: user.profile.lastLoginAt?.toISOString() || null,
+            gender: user.profile.gender,
+            ageBucket: user.profile.ageBucket,
+            profileCompletionRewardGiven: user.profile.profileCompletionRewardGiven,
+            currentStreak: user.profile.currentStreak,
+            longestStreak: user.profile.longestStreak,
+            lastDailySurveyDate: user.profile.lastDailySurveyDate?.toISOString() || null,
+            totalCoins,
           }
         : null,
     };
   }),
+
+  updateProfile: protectedProcedure
+    .input(
+      z.object({
+        displayName: z.string().min(1).optional(),
+        gender: z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional(),
+        ageBucket: z.enum(['18-24', '25-34', '35-44', '45-54', '55-64', '65+']).optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.user.userId;
+
+      // Get current user and profile
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: { profile: true },
+      });
+
+      if (!user || !user.profile) {
+        throw new Error('Profile not found');
+      }
+
+      const profile = user.profile;
+
+      // Check if this is the first time completing profile (all three fields)
+      // After update, all three should be present
+      const finalName = input.displayName || user.displayName;
+      const finalGender = input.gender !== undefined ? input.gender : profile.gender;
+      const finalAgeBucket = input.ageBucket !== undefined ? input.ageBucket : profile.ageBucket;
+
+      const isFirstCompletion =
+        !profile.profileCompletionRewardGiven &&
+        !!finalName &&
+        finalGender !== null &&
+        finalAgeBucket !== null;
+
+      // Update user displayName if provided
+      if (input.displayName) {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { displayName: input.displayName },
+        });
+      }
+
+      // Update profile
+      const updatedProfile = await prisma.profile.update({
+        where: { userId },
+        data: {
+          gender: input.gender !== undefined ? input.gender : profile.gender,
+          ageBucket: input.ageBucket !== undefined ? input.ageBucket : profile.ageBucket,
+          profileCompletionRewardGiven:
+            isFirstCompletion || profile.profileCompletionRewardGiven,
+        },
+      });
+
+      // Award 20 points if this is the first completion
+      let pointsAwarded = 0;
+      if (isFirstCompletion) {
+        await prisma.userPoint.create({
+          data: {
+            userId,
+            amount: 20,
+            reason: 'Profile completion reward',
+          },
+        });
+        pointsAwarded = 20;
+      }
+
+      return {
+        success: true,
+        profile: {
+          gender: updatedProfile.gender,
+          ageBucket: updatedProfile.ageBucket,
+          profileCompletionRewardGiven: updatedProfile.profileCompletionRewardGiven,
+        },
+        pointsAwarded,
+        isFirstCompletion,
+      };
+    }),
 });
 

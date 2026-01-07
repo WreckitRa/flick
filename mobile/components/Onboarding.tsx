@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,14 @@ import {
   TouchableOpacity,
   Dimensions,
   Animated,
+  Easing,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, spacing, borderRadius, typography } from '@/lib/tokens';
+import { Button, ProgressDots, CoinPill } from '@/components/ui';
+import { triggerHaptic } from '@/lib/haptics';
+import { getDeviceId } from '@/lib/device';
+import { setSkipGuestSurvey } from '@/lib/auth';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ONBOARDING_KEY = '@flick_onboarding_completed';
@@ -21,48 +26,261 @@ interface OnboardingProps {
   onLogin?: () => void;
 }
 
+// Animated Survey Demo Component
+function SurveyDemo({ isVisible }: { isVisible: boolean }) {
+  const options = [
+    { id: 1, text: '👍 Yes!', emoji: '👍' },
+    { id: 2, text: '👎 Nope', emoji: '👎' },
+  ];
+
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const animValues = useRef(options.map(() => new Animated.Value(0))).current;
+  const scaleValues = useRef(options.map(() => new Animated.Value(0.8))).current;
+  const selectedScale = useRef(new Animated.Value(1)).current;
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (!isVisible) {
+      // Clean up when not visible
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      setSelectedId(null);
+      animValues.forEach((anim) => anim.setValue(0));
+      scaleValues.forEach((anim) => anim.setValue(0.8));
+      selectedScale.setValue(1);
+      return;
+    }
+
+    // Only run animation once when becoming visible
+    if (selectedId !== null) return;
+
+    // Animate options appearing one by one
+    const animations = options.map((_, index) =>
+      Animated.parallel([
+        Animated.timing(animValues[index], {
+          toValue: 1,
+          duration: 300,
+          delay: index * 150,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleValues[index], {
+          toValue: 1,
+          delay: index * 150,
+          tension: 50,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    const mainAnimation = Animated.sequence([
+      // First, show all options
+      Animated.parallel(animations),
+      // Wait a bit
+      Animated.delay(800),
+      // Then select one
+      Animated.timing(selectedScale, {
+        toValue: 1,
+        duration: 0,
+        useNativeDriver: true,
+      }),
+    ]);
+
+    mainAnimation.start(() => {
+      if (!isVisible) return;
+      
+      // Select the first option (Yes)
+      setSelectedId(1);
+      Animated.spring(selectedScale, {
+        toValue: 1.05,
+        tension: 50,
+        friction: 5,
+        useNativeDriver: true,
+      }).start(() => {
+        if (!isVisible) return;
+        
+        Animated.spring(selectedScale, {
+          toValue: 1,
+          tension: 50,
+          friction: 7,
+          useNativeDriver: true,
+        }).start();
+      });
+
+      // Loop the animation after delay
+      timeoutRef.current = setTimeout(() => {
+        if (!isVisible) return;
+        setSelectedId(null);
+        animValues.forEach((anim) => anim.setValue(0));
+        scaleValues.forEach((anim) => anim.setValue(0.8));
+        selectedScale.setValue(1);
+      }, 2000);
+    });
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+  }, [isVisible, selectedId]);
+
+  return (
+    <View style={demoStyles.container}>
+      <Text style={demoStyles.question}>Do you like coffee? ☕</Text>
+      <View style={demoStyles.optionsContainer}>
+        {options.map((option, index) => {
+          const isSelected = selectedId === option.id;
+          return (
+            <Animated.View
+              key={option.id}
+              style={[
+                demoStyles.option,
+                isSelected && demoStyles.optionSelected,
+                {
+                  opacity: animValues[index],
+                  transform: [
+                    {
+                      scale: isSelected ? selectedScale : scaleValues[index],
+                    },
+                  ],
+                },
+              ]}
+            >
+              <Text style={[demoStyles.optionText, isSelected && demoStyles.optionTextSelected]}>
+                {option.text}
+              </Text>
+            </Animated.View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+const demoStyles = StyleSheet.create({
+  container: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
+    borderWidth: 3,
+    borderColor: colors.gray[200],
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    marginTop: spacing.md,
+    width: '100%',
+    minHeight: 160,
+  },
+  question: {
+    ...typography.body,
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.gray[900],
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+    lineHeight: 26,
+    paddingHorizontal: spacing.xs,
+  },
+  optionsContainer: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  option: {
+    flex: 1,
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.sm,
+    borderWidth: 3,
+    borderColor: colors.gray[200],
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 64,
+  },
+  optionSelected: {
+    backgroundColor: colors.flickTeal,
+    borderColor: colors.flickTealDark,
+    borderBottomWidth: 5,
+  },
+  optionText: {
+    ...typography.body,
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.gray[900],
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  optionTextSelected: {
+    color: colors.white,
+    fontWeight: '800',
+  },
+});
+
 export function Onboarding({ onComplete, onSkip, onAnswerFirstQuestion, onLogin }: OnboardingProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const coinScale = useRef(new Animated.Value(1)).current;
+  const emojiScale = useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    // Animate emoji entrance
+    Animated.spring(emojiScale, {
+      toValue: 1,
+      tension: 20,
+      friction: 7,
+      useNativeDriver: true,
+    }).start();
+  }, [currentIndex]);
 
   const screens = [
     {
-      title: 'Your opinions are valuable.',
+      title: `Your Voice.\nYour Rewards. 💪`,
       subtitle:
-        'At Flick, your feedback helps restaurants, clubs, and brands do better — and you get rewarded for it.',
-      visual: '💬',
-      accentColor: colors.flickYellow,
+        'Shape what you love — restaurants, brands, experiences. Get paid in coins for every answer.',
+      visual: '🎯',
+      accentColor: colors.flickTeal,
+      bgColor: colors.flickTealLight,
     },
     {
-      title: 'Quick questions. Real rewards.',
-      bullets: [
-        'Answer simple, fun questions',
-        'Collect Flick Coins in minutes',
-        'No long surveys, no effort',
-      ],
+      title: `Quick & Fun\nSurveys 🎮`,
+      subtitle:
+        'Simple questions. Instant rewards. Takes just 30 seconds per survey.',
       visual: '⚡',
-      accentColor: colors.flickYellow,
+      accentColor: colors.flickGold,
+      bgColor: colors.flickGoldLight,
+      showDemo: true,
     },
     {
-      title: 'Rewards made for you.',
+      title: `Real Rewards\nYou'll Love 🎁`,
       subtitle:
-        'Redeem Flick Coins for personalized rewards from places you actually like — top brands, restaurants, and experiences.',
+        'Get personalized rewards based on your location and preferences — top restaurants, brands, and experiences near you.',
       visual: '🪙',
-      accentColor: colors.flickYellow,
+      accentColor: colors.flickGold,
+      bgColor: colors.flickGoldLight,
       showCoin: true,
     },
     {
-      title: 'Learn more about yourself.',
+      title: `Be Part of\nSomething Big 🚀`,
       subtitle:
-        'See how your choices compare to the Lebanese community — habits, trends, and insights about you.',
+        'See how Lebanon thinks. Compare your choices with thousands. Help brands improve.',
       visual: '📊',
-      accentColor: colors.flickBlue,
+      accentColor: colors.flickPurple,
+      bgColor: colors.flickPurpleLight,
     },
   ];
 
   const handleNext = () => {
+    triggerHaptic('medium').catch(() => {});
+    // Reset emoji animation for next screen
+    emojiScale.setValue(0);
+    
     if (currentIndex < screens.length - 1) {
       const nextIndex = currentIndex + 1;
       setCurrentIndex(nextIndex);
@@ -92,7 +310,6 @@ export function Onboarding({ onComplete, onSkip, onAnswerFirstQuestion, onLogin 
   // Helper function to mark device onboarding as complete on backend
   const markDeviceOnboardingComplete = async () => {
     try {
-      const { getDeviceId } = await import('@/lib/device');
       const deviceId = await getDeviceId();
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
       
@@ -116,17 +333,28 @@ export function Onboarding({ onComplete, onSkip, onAnswerFirstQuestion, onLogin 
     const index = Math.round(offsetX / SCREEN_WIDTH);
     if (index !== currentIndex) {
       setCurrentIndex(index);
+      // Reset emoji animation for new screen
+      emojiScale.setValue(0);
+      Animated.spring(emojiScale, {
+        toValue: 1,
+        tension: 20,
+        friction: 7,
+        useNativeDriver: true,
+      }).start();
+      
       // Animate coin on screen 3
       if (index === 2) {
         Animated.sequence([
-          Animated.timing(coinScale, {
-            toValue: 1.2,
-            duration: 200,
+          Animated.spring(coinScale, {
+            toValue: 1.3,
+            tension: 20,
+            friction: 5,
             useNativeDriver: true,
           }),
-          Animated.timing(coinScale, {
+          Animated.spring(coinScale, {
             toValue: 1,
-            duration: 200,
+            tension: 30,
+            friction: 7,
             useNativeDriver: true,
           }),
         ]).start();
@@ -138,7 +366,7 @@ export function Onboarding({ onComplete, onSkip, onAnswerFirstQuestion, onLogin 
     const isLast = index === screens.length - 1;
 
     return (
-      <View key={index} style={styles.screen}>
+      <View key={index} style={[styles.screen, { backgroundColor: screen.bgColor }]}>
         <Animated.View
           style={[
             styles.content,
@@ -147,71 +375,73 @@ export function Onboarding({ onComplete, onSkip, onAnswerFirstQuestion, onLogin 
             },
           ]}
         >
-          <View style={styles.visualContainer}>
-            <Text style={styles.visual}>{screen.visual}</Text>
-            {screen.showCoin && (
+          <View style={styles.topSection}>
+            <View style={styles.visualContainer}>
               <Animated.View
                 style={[
-                  styles.coinBadge,
+                  styles.emojiCircle,
                   {
                     backgroundColor: screen.accentColor,
-                    transform: [{ scale: coinScale }],
+                    borderColor: screen.accentColor,
+                    transform: [{ scale: emojiScale }],
                   },
                 ]}
               >
-                <Text style={styles.coinText}>🪙</Text>
-              </Animated.View>
-            )}
-          </View>
-
-          <Text style={styles.title}>{screen.title}</Text>
-
-          {screen.subtitle && <Text style={styles.subtitle}>{screen.subtitle}</Text>}
-
-          {screen.bullets && (
-            <View style={styles.bulletsContainer}>
-              {screen.bullets.map((bullet, i) => (
-                <View key={i} style={styles.bullet}>
-                  <Text style={styles.bulletText}>• {bullet}</Text>
+                <View style={styles.emojiWrapper}>
+                  <Text style={styles.visual}>{screen.visual}</Text>
                 </View>
-              ))}
+              </Animated.View>
+              {screen.showCoin && (
+                <Animated.View
+                  style={{
+                    transform: [{ scale: coinScale }],
+                    marginTop: spacing.lg,
+                    alignItems: 'center',
+                  }}
+                >
+                  <CoinPill amount={10} size="large" animated />
+                </Animated.View>
+              )}
             </View>
-          )}
+
+            <Text style={[styles.title, { color: screen.accentColor }]}>{screen.title}</Text>
+
+            {screen.subtitle && <Text style={styles.subtitle}>{screen.subtitle}</Text>}
+
+            {/* Show survey demo on second screen (index 1) */}
+            {screen.showDemo && <SurveyDemo isVisible={currentIndex === index} />}
+          </View>
 
           <View style={styles.buttonContainer}>
             {isLast ? (
               <>
-                <TouchableOpacity
-                  style={[styles.primaryButton, { backgroundColor: colors.flickYellow }]}
+                <Button
+                  title="Start Earning Now 🚀"
                   onPress={() => {
+                    triggerHaptic('success').catch(() => {});
                     handleComplete();
                     onAnswerFirstQuestion?.();
                   }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.primaryButtonText, { color: colors.black }]}>
-                    Answer your first question
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.secondaryButtonSmall}
+                  variant="secondary"
+                  style={styles.primaryButton}
+                />
+                <Button
+                  title="I already have an account"
                   onPress={() => {
                     handleComplete();
                     onLogin?.();
                   }}
-                  activeOpacity={0.6}
-                >
-                  <Text style={styles.secondaryButtonTextSmall}>Log in</Text>
-                </TouchableOpacity>
+                  variant="ghost"
+                  style={styles.secondaryButtonSmall}
+                />
               </>
             ) : (
-              <TouchableOpacity
-                style={[styles.primaryButton, { backgroundColor: colors.flickBlue }]}
+              <Button
+                title="Continue"
                 onPress={handleNext}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.primaryButtonText}>Next</Text>
-              </TouchableOpacity>
+                variant="primary"
+                style={styles.primaryButton}
+              />
             )}
           </View>
         </Animated.View>
@@ -237,7 +467,6 @@ export function Onboarding({ onComplete, onSkip, onAnswerFirstQuestion, onLogin 
           onPress={async () => {
             // Set skip guest survey flag FIRST before any navigation
             try {
-              const { setSkipGuestSurvey } = await import('@/lib/auth');
               await setSkipGuestSurvey();
             } catch (error) {
               console.error('Error setting skip guest survey flag:', error);
@@ -267,18 +496,11 @@ export function Onboarding({ onComplete, onSkip, onAnswerFirstQuestion, onLogin 
       </ScrollView>
 
       <View style={styles.progressContainer}>
-        {screens.map((_, index) => (
-          <View
-            key={index}
-            style={[
-              styles.progressDot,
-              index === currentIndex && styles.progressDotActive,
-              index === currentIndex && {
-                backgroundColor: colors.flickBlue,
-              },
-            ]}
-          />
-        ))}
+        <ProgressDots
+          total={screens.length}
+          current={currentIndex}
+          color={screens[currentIndex].accentColor}
+        />
       </View>
     </View>
   );
@@ -299,23 +521,26 @@ const styles = StyleSheet.create({
   },
   skipText: {
     ...typography.body,
-    color: colors.gray[600],
-    fontWeight: '500',
+    fontSize: 16,
+    color: colors.gray[700],
+    fontWeight: '600',
   },
   loginButton: {
     position: 'absolute',
-    bottom: spacing.xl + spacing.lg,
+    bottom: spacing.xl + spacing.xl,
     left: 0,
     right: 0,
     alignItems: 'center',
     zIndex: 10,
-    padding: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
   },
   loginButtonText: {
-    ...typography.caption,
+    ...typography.body,
     color: colors.gray[600],
-    fontSize: 13,
-    fontWeight: '400',
+    fontSize: 15,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   scrollView: {
     flex: 1,
@@ -323,8 +548,8 @@ const styles = StyleSheet.create({
   screen: {
     width: SCREEN_WIDTH,
     flex: 1,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xxl + spacing.lg,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xxl + spacing.xl,
     paddingBottom: spacing.xxl,
   },
   content: {
@@ -332,120 +557,76 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  topSection: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+  },
   visualContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xl,
-    position: 'relative',
   },
-  visual: {
-    fontSize: 80,
-  },
-  coinBadge: {
-    position: 'absolute',
-    top: -spacing.sm,
-    right: -spacing.md,
-    width: 48,
-    height: 48,
-    borderRadius: borderRadius.full,
+  emojiCircle: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 5,
     shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  coinText: {
-    fontSize: 24,
+  emojiWrapper: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  visual: {
+    fontSize: 64,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    includeFontPadding: false,
+    lineHeight: 70,
   },
   title: {
-    ...typography.title,
-    color: colors.black,
+    ...typography.largeTitle,
+    fontSize: 36,
+    fontWeight: '900',
     textAlign: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
     paddingHorizontal: spacing.md,
+    lineHeight: 42,
+    letterSpacing: -1.5,
   },
   subtitle: {
-    ...typography.subtitle,
-    color: colors.gray[600],
-    textAlign: 'center',
-    lineHeight: 24,
-    paddingHorizontal: spacing.md,
-  },
-  bulletsContainer: {
-    width: '100%',
-    paddingHorizontal: spacing.lg,
-    marginTop: spacing.lg,
-  },
-  bullet: {
-    marginBottom: spacing.md,
-  },
-  bulletText: {
     ...typography.body,
-    color: colors.gray[900],
-    lineHeight: 24,
+    fontSize: 18,
+    color: colors.gray[700],
+    textAlign: 'center',
+    lineHeight: 28,
+    paddingHorizontal: spacing.lg,
+    fontWeight: '500',
   },
   buttonContainer: {
     width: '100%',
-    paddingHorizontal: spacing.md,
-    marginTop: spacing.xl,
+    paddingHorizontal: spacing.sm,
+    paddingBottom: spacing.lg,
+    gap: spacing.md,
   },
   primaryButton: {
-    width: '100%',
-    paddingVertical: spacing.md + spacing.sm,
-    borderRadius: borderRadius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.flickBlue,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  primaryButtonText: {
-    ...typography.body,
-    color: colors.white,
-    fontWeight: '600',
-  },
-  secondaryButton: {
-    width: '100%',
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.sm,
-  },
-  secondaryButtonText: {
-    ...typography.body,
-    color: colors.gray[600],
+    marginBottom: 0,
   },
   secondaryButtonSmall: {
-    width: '100%',
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.xs,
-  },
-  secondaryButtonTextSmall: {
-    ...typography.caption,
-    color: colors.gray[600],
-    fontWeight: '500',
+    marginTop: 0,
   },
   progressContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    paddingBottom: spacing.xl + spacing.md,
     alignItems: 'center',
-    paddingVertical: spacing.lg,
-    gap: spacing.sm,
-  },
-  progressDot: {
-    width: 8,
-    height: 8,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.gray[200],
-  },
-  progressDotActive: {
-    width: 24,
   },
 });
 
@@ -458,7 +639,6 @@ export async function hasCompletedOnboarding(): Promise<boolean> {
 
   // Then check backend (device-level persistence across reinstalls)
   try {
-    const { getDeviceId } = await import('@/lib/device');
     const deviceId = await getDeviceId();
     const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
     

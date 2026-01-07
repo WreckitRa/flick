@@ -1,24 +1,31 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  TouchableOpacity,
   Animated,
   ActivityIndicator,
+  Easing,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { api } from '@/lib/api';
 import { getGuestCoinsEarned, hasCompletedGuestSurvey, clearGuestData } from '@/lib/guest';
-import { colors, spacing, borderRadius, typography } from '@/lib/tokens';
+import { colors, spacing, borderRadius, typography, shadows } from '@/lib/tokens';
+import { ScreenContainer, Button, CoinPill, CoinBurst } from '@/components/ui';
+import { triggerHaptic } from '@/lib/haptics';
 
 export default function RewardConfirmationScreen() {
   const router = useRouter();
   const [coinsEarned, setCoinsEarned] = useState(0);
   const [hasGuestData, setHasGuestData] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const coinAnimation = new Animated.Value(1);
+  
+  // Animations
+  const checkmarkScale = useRef(new Animated.Value(0)).current;
+  const checkmarkRotate = useRef(new Animated.Value(0)).current;
+  const contentFade = useRef(new Animated.Value(0)).current;
+  const contentSlide = useRef(new Animated.Value(40)).current;
+  const buttonFade = useRef(new Animated.Value(0)).current;
 
   // Get user info to check for guest data from backend
   const { data: userData } = api.auth.getCurrentUser.useQuery(undefined, {
@@ -51,22 +58,52 @@ export default function RewardConfirmationScreen() {
         await clearGuestData();
         setCoinsEarned(localCoins);
         setHasGuestData(true);
+        setIsLoading(false);
 
-        // Animate coin
+        // Trigger success haptic
+        triggerHaptic('success').catch(() => {});
+
+        // Staggered entrance animations
         Animated.sequence([
-          Animated.timing(coinAnimation, {
-            toValue: 1.3,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(coinAnimation, {
+          // Checkmark pops in with bounce
+          Animated.parallel([
+            Animated.spring(checkmarkScale, {
+              toValue: 1,
+              tension: 60,
+              friction: 6,
+              useNativeDriver: true,
+            }),
+            Animated.timing(checkmarkRotate, {
+              toValue: 1,
+              duration: 400,
+              easing: Easing.elastic(1.2),
+              useNativeDriver: true,
+            }),
+          ]),
+          // Then content fades and slides up
+          Animated.delay(100),
+          Animated.parallel([
+            Animated.timing(contentFade, {
+              toValue: 1,
+              duration: 350,
+              useNativeDriver: true,
+            }),
+            Animated.spring(contentSlide, {
+              toValue: 0,
+              tension: 60,
+              friction: 8,
+              useNativeDriver: true,
+            }),
+          ]),
+          // Button appears last
+          Animated.delay(150),
+          Animated.timing(buttonFade, {
             toValue: 1,
             duration: 300,
             useNativeDriver: true,
           }),
         ]).start();
 
-        setIsLoading(false);
       } catch (error) {
         console.error('Error checking guest data:', error);
         // On error, redirect to home
@@ -78,6 +115,7 @@ export default function RewardConfirmationScreen() {
   }, [router]);
 
   const handleContinue = async () => {
+    triggerHaptic('medium').catch(() => {});
     // Clear guest data now that we've shown the confirmation
     try {
       await clearGuestData();
@@ -89,122 +127,161 @@ export default function RewardConfirmationScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color={colors.flickBlue} />
-      </View>
+      <ScreenContainer style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.flickTeal} />
+        </View>
+      </ScreenContainer>
     );
   }
 
+  const rotateInterpolate = checkmarkRotate.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Animated.View style={{ transform: [{ scale: coinAnimation }] }}>
-          <Text style={styles.emoji}>🎉</Text>
-        </Animated.View>
-        <Text style={styles.title}>Your Flick Coins are now saved</Text>
-
-        {hasGuestData && coinsEarned > 0 && (
-          <View style={styles.coinsContainer}>
-            <Text style={styles.coinsLabel}>You have</Text>
-            <Text style={styles.coinsText}>
-              <Text style={styles.coinsHighlight}>🪙 {coinsEarned} Flick Coins</Text>
-            </Text>
-            <Text style={styles.coinsSubtext}>All saved to your account</Text>
-          </View>
-        )}
-
-        <View style={styles.messageBox}>
-          <Text style={styles.messageText}>
-            {hasGuestData
-              ? 'Your guest survey answers and coins have been transferred to your account. Start earning more!'
-              : 'Welcome! Start answering surveys to earn Flick Coins.'}
-          </Text>
+    <ScreenContainer style={styles.container}>
+      <View style={styles.content}>
+        {/* Checkmark with coin burst effect */}
+        <View style={styles.iconContainer}>
+          {coinsEarned > 0 && <CoinBurst amount={coinsEarned} />}
+          <Animated.View
+            style={[
+              styles.checkmarkCircle,
+              {
+                transform: [
+                  { scale: checkmarkScale },
+                  { rotate: rotateInterpolate },
+                ],
+              },
+            ]}
+          >
+            <Text style={styles.checkmark}>✓</Text>
+          </Animated.View>
         </View>
 
-        <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
-          <Text style={styles.continueButtonText}>Continue to Home</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </View>
+        {/* Main content */}
+        <Animated.View
+          style={[
+            styles.textContainer,
+            {
+              opacity: contentFade,
+              transform: [{ translateY: contentSlide }],
+            },
+          ]}
+        >
+          <Text style={styles.title}>Account Created!</Text>
+          
+          {hasGuestData && coinsEarned > 0 && (
+            <>
+              <Text style={styles.subtitle}>Your Flick Coins are now saved</Text>
+              
+              <View style={styles.coinsContainer}>
+                <CoinPill amount={coinsEarned} size="large" animated />
+              </View>
+            </>
+          )}
+        </Animated.View>
+
+        {/* Continue button */}
+        <Animated.View
+          style={[
+            styles.buttonContainer,
+            { opacity: buttonFade },
+          ]}
+        >
+          <Button
+            title="Continue"
+            onPress={handleContinue}
+            variant="secondary"
+            style={styles.continueButton}
+          />
+        </Animated.View>
+      </View>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.background.elevated,
   },
-  scrollContent: {
-    flexGrow: 1,
-    padding: spacing.lg,
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  emoji: {
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xxl,
+  },
+  iconContainer: {
+    position: 'relative',
+    width: 180,
+    height: 180,
+    marginBottom: spacing.xxl,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkmarkCircle: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 6,
+    borderColor: colors.successLight,
+    ...shadows.xl,
+  },
+  checkmark: {
     fontSize: 80,
-    textAlign: 'center',
-    marginBottom: spacing.md,
+    color: colors.text.inverse,
+    fontWeight: '900',
+    marginTop: -8,
+  },
+  textContainer: {
+    alignItems: 'center',
+    marginBottom: spacing.xxl,
   },
   title: {
     ...typography.largeTitle,
-    color: colors.flickBlue,
+    fontSize: 36,
+    color: colors.text.primary,
     textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  subtitle: {
+    ...typography.bodyLarge,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    fontWeight: '600',
     marginBottom: spacing.xl,
   },
   coinsContainer: {
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginTop: spacing.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    backgroundColor: colors.flickGoldLight,
+    borderRadius: borderRadius.xl,
+    borderWidth: 3,
+    borderColor: colors.flickGold,
+    borderBottomWidth: 6,
+    borderBottomColor: colors.flickGoldDark,
+    ...shadows.md,
   },
-  coinsLabel: {
-    ...typography.body,
-    color: colors.gray[600],
-    marginBottom: spacing.xs,
-  },
-  coinsText: {
-    ...typography.largeTitle,
-    color: colors.flickBlue,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: spacing.xs,
-  },
-  coinsHighlight: {
-    color: colors.flickBlue,
-  },
-  coinsSubtext: {
-    ...typography.caption,
-    color: colors.gray[600],
-  },
-  messageBox: {
-    backgroundColor: colors.gray[100],
-    borderRadius: borderRadius.md,
-    padding: spacing.lg,
-    marginBottom: spacing.xl,
-    maxWidth: 350,
-  },
-  messageText: {
-    ...typography.body,
-    color: colors.gray[700],
-    textAlign: 'center',
-    lineHeight: 22,
+  buttonContainer: {
+    width: '100%',
+    paddingHorizontal: spacing.lg,
   },
   continueButton: {
-    backgroundColor: colors.flickYellow,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md + spacing.sm,
-    paddingHorizontal: spacing.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 200,
-    shadowColor: colors.flickYellow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  continueButtonText: {
-    ...typography.body,
-    color: colors.black,
-    fontWeight: '600',
+    minHeight: 56,
   },
 });
+
 

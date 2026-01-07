@@ -37,19 +37,35 @@ model User {
   @@index([phone])
 }
 
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
 model Profile {
-  id                String   @id @default(cuid())
-  userId            String   @unique
-  country           String   @default("Lebanon")
-  onboardingCompleted Boolean @default(false)
-  marketingOptIn    Boolean  @default(false)
-  lastLoginAt       DateTime?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                          String    @id @default(cuid())
+  userId                      String    @unique
+  country                     String    @default("Lebanon")
+  onboardingCompleted         Boolean   @default(false)
+  marketingOptIn              Boolean   @default(false)
+  lastLoginAt                 DateTime?
+  // Profile completion fields
+  gender                      Gender?
+  ageBucket                   String?   // Future-proof age bucket storage (e.g., "18-24", "25-34", "35-44", "45-54", "55-64", "65+")
+  profileCompletionRewardGiven Boolean   @default(false) // Track if 20 points were awarded
+  // Streak fields
+  currentStreak               Int       @default(0) // Current daily survey streak
+  longestStreak               Int       @default(0) // Longest streak achieved
+  lastDailySurveyDate         DateTime? // Last date a daily survey was completed (for streak calculation)
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([ageBucket])
 }
 
 enum SurveyType {
@@ -64,12 +80,21 @@ enum QuestionType {
   RATING
 }
 
+enum ExpiryType {
+  SPECIFIC_DATE
+  RELATIVE_DAYS
+}
+
 model Survey {
   id            String      @id @default(cuid())
   title         String
   description   String?
   type          SurveyType
   published     Boolean     @default(false)
+  publishAt     DateTime?   // Scheduled publish date (null = publish immediately when published=true)
+  expiresAt     DateTime?   // Specific expiry date/time
+  expiryType    ExpiryType? // How expiry is calculated
+  expiryDays    Int?        // Number of days for relative expiry
   isGuestSurvey Boolean     @default(false) // Only one can be true
   coinsReward   Int         @default(10) // Total coins for completing survey
   order         Int         @default(0) // For ordering surveys
@@ -82,6 +107,8 @@ model Survey {
   @@index([published])
   @@index([type])
   @@index([isGuestSurvey])
+  @@index([publishAt])
+  @@index([expiresAt])
 }
 
 model Question {

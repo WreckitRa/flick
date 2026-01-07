@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { router, publicProcedure, protectedProcedure } from '../trpc';
 import { prisma } from '../lib/prisma';
+import { parse } from 'csv-parse/sync';
 
 export const surveyRouter = router({
   // Admin: List all surveys
@@ -47,6 +48,10 @@ export const surveyRouter = router({
         isGuestSurvey: survey.isGuestSurvey,
         coinsReward: survey.coinsReward,
         order: survey.order,
+        publishAt: survey.publishAt?.toISOString() || null,
+        expiryType: survey.expiryType,
+        expiresAt: survey.expiresAt?.toISOString() || null,
+        expiryDays: survey.expiryDays,
         questionCount: survey.questions.length,
         answerCount: survey._count.answers,
         createdAt: survey.createdAt.toISOString(),
@@ -92,6 +97,10 @@ export const surveyRouter = router({
       isGuestSurvey: survey.isGuestSurvey,
       coinsReward: survey.coinsReward,
       order: survey.order,
+      publishAt: survey.publishAt?.toISOString() || null,
+      expiryType: survey.expiryType,
+      expiresAt: survey.expiresAt?.toISOString() || null,
+      expiryDays: survey.expiryDays,
       createdAt: survey.createdAt.toISOString(),
       updatedAt: survey.updatedAt.toISOString(),
       questions: survey.questions.map((q) => ({
@@ -119,6 +128,10 @@ export const surveyRouter = router({
         description: z.string().optional(),
         type: z.enum(['GUEST', 'DAILY']),
         coinsReward: z.number().int().min(0).default(10),
+        publishAt: z.string().datetime().optional().nullable(),
+        expiryType: z.enum(['SPECIFIC_DATE', 'RELATIVE_DAYS']).optional().nullable(),
+        expiresAt: z.string().datetime().optional().nullable(),
+        expiryDays: z.number().int().min(1).optional().nullable(),
       })
     )
     .mutation(async ({ input }) => {
@@ -130,6 +143,10 @@ export const surveyRouter = router({
           coinsReward: input.coinsReward,
           published: false,
           isGuestSurvey: false,
+          publishAt: input.publishAt ? new Date(input.publishAt) : null,
+          expiryType: input.expiryType || null,
+          expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
+          expiryDays: input.expiryDays || null,
         },
       });
 
@@ -141,6 +158,10 @@ export const surveyRouter = router({
         published: survey.published,
         isGuestSurvey: survey.isGuestSurvey,
         coinsReward: survey.coinsReward,
+        publishAt: survey.publishAt?.toISOString() || null,
+        expiryType: survey.expiryType,
+        expiresAt: survey.expiresAt?.toISOString() || null,
+        expiryDays: survey.expiryDays,
         createdAt: survey.createdAt.toISOString(),
         updatedAt: survey.updatedAt.toISOString(),
       };
@@ -156,14 +177,22 @@ export const surveyRouter = router({
         type: z.enum(['GUEST', 'DAILY']).optional(),
         coinsReward: z.number().int().min(0).optional(),
         order: z.number().int().optional(),
+        publishAt: z.string().datetime().optional().nullable(),
+        expiryType: z.enum(['SPECIFIC_DATE', 'RELATIVE_DAYS']).optional().nullable(),
+        expiresAt: z.string().datetime().optional().nullable(),
+        expiryDays: z.number().int().min(1).optional().nullable(),
       })
     )
     .mutation(async ({ input }) => {
-      const { id, ...updateData } = input;
+      const { id, publishAt, expiresAt, ...updateData } = input;
 
       const survey = await prisma.survey.update({
         where: { id },
-        data: updateData,
+        data: {
+          ...updateData,
+          publishAt: publishAt !== undefined ? (publishAt ? new Date(publishAt) : null) : undefined,
+          expiresAt: expiresAt !== undefined ? (expiresAt ? new Date(expiresAt) : null) : undefined,
+        },
       });
 
       return {
@@ -175,6 +204,10 @@ export const surveyRouter = router({
         isGuestSurvey: survey.isGuestSurvey,
         coinsReward: survey.coinsReward,
         order: survey.order,
+        publishAt: survey.publishAt?.toISOString() || null,
+        expiryType: survey.expiryType,
+        expiresAt: survey.expiresAt?.toISOString() || null,
+        expiryDays: survey.expiryDays,
         updatedAt: survey.updatedAt.toISOString(),
       };
     }),
@@ -238,6 +271,139 @@ export const surveyRouter = router({
 
     return { success: true };
   }),
+
+  // Admin: Import survey from CSV
+  importFromCSV: publicProcedure
+    .input(
+      z.object({
+        csvContent: z.string(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      try {
+        // Parse CSV
+        const records = parse(input.csvContent, {
+          columns: true,
+          skip_empty_lines: true,
+          trim: true,
+        });
+
+        if (!records || records.length === 0) {
+          throw new Error('CSV file is empty or invalid');
+        }
+
+        // Expected CSV format:
+        // title, description, type, coinsReward, publishAt, expiryType, expiresAt, expiryDays, questionText, questionType, questionCoinsReward, questionExplanation, optionText, optionEmoji, optionIsCorrect
+
+        // Group by survey (first row defines survey)
+        const surveyData = records[0];
+        
+        // Validate survey data
+        if (!surveyData.title || !surveyData.type) {
+          throw new Error('CSV must include title and type columns');
+        }
+
+        if (!['GUEST', 'DAILY'].includes(surveyData.type)) {
+          throw new Error('Survey type must be GUEST or DAILY');
+        }
+
+        // Parse dates and numbers
+        const publishAt = surveyData.publishAt ? new Date(surveyData.publishAt) : null;
+        const expiresAt = surveyData.expiresAt ? new Date(surveyData.expiresAt) : null;
+        const expiryType = surveyData.expiryType || null;
+        const expiryDays = surveyData.expiryDays ? parseInt(surveyData.expiryDays, 10) : null;
+        const coinsReward = surveyData.coinsReward ? parseInt(surveyData.coinsReward, 10) : 10;
+
+        // Validate expiry settings
+        if (expiryType && !['SPECIFIC_DATE', 'RELATIVE_DAYS'].includes(expiryType)) {
+          throw new Error('expiryType must be SPECIFIC_DATE or RELATIVE_DAYS');
+        }
+
+        // Create survey
+        const survey = await prisma.survey.create({
+          data: {
+            title: surveyData.title,
+            description: surveyData.description || null,
+            type: surveyData.type as 'GUEST' | 'DAILY',
+            coinsReward,
+            published: false,
+            isGuestSurvey: false,
+            publishAt,
+            expiryType: expiryType as 'SPECIFIC_DATE' | 'RELATIVE_DAYS' | null,
+            expiresAt,
+            expiryDays,
+          },
+        });
+
+        // Group questions by questionText
+        const questionsMap = new Map();
+        for (const record of records) {
+          if (!record.questionText) continue;
+
+          if (!questionsMap.has(record.questionText)) {
+            questionsMap.set(record.questionText, {
+              text: record.questionText,
+              type: record.questionType || 'SINGLE_CHOICE',
+              coinsReward: record.questionCoinsReward ? parseInt(record.questionCoinsReward, 10) : 0,
+              explanation: record.questionExplanation || null,
+              options: [],
+            });
+          }
+
+          // Add option if present
+          if (record.optionText) {
+            questionsMap.get(record.questionText).options.push({
+              text: record.optionText,
+              emoji: record.optionEmoji || null,
+              isCorrect: record.optionIsCorrect === 'true' || record.optionIsCorrect === '1',
+            });
+          }
+        }
+
+        // Create questions and options
+        let questionOrder = 0;
+        for (const [, questionData] of questionsMap) {
+          // Validate question type
+          if (!['SINGLE_CHOICE', 'MULTIPLE_CHOICE', 'TRUE_FALSE', 'RATING'].includes(questionData.type)) {
+            throw new Error(`Invalid question type: ${questionData.type}. Must be SINGLE_CHOICE, MULTIPLE_CHOICE, TRUE_FALSE, or RATING`);
+          }
+
+          const question = await prisma.question.create({
+            data: {
+              surveyId: survey.id,
+              text: questionData.text,
+              type: questionData.type,
+              order: questionOrder++,
+              coinsReward: questionData.coinsReward,
+              explanation: questionData.explanation,
+            },
+          });
+
+          // Create options
+          let optionOrder = 0;
+          for (const optionData of questionData.options) {
+            await prisma.option.create({
+              data: {
+                questionId: question.id,
+                text: optionData.text,
+                emoji: optionData.emoji,
+                isCorrect: optionData.isCorrect,
+                order: optionOrder++,
+              },
+            });
+          }
+        }
+
+        return {
+          success: true,
+          surveyId: survey.id,
+          title: survey.title,
+          questionCount: questionsMap.size,
+        };
+      } catch (error: any) {
+        throw new Error(`CSV import failed: ${error.message}`);
+      }
+    }),
 
   // Admin: Create question
   createQuestion: publicProcedure
@@ -1058,9 +1224,52 @@ export const surveyRouter = router({
         }
       }
 
+      // Handle streak logic for daily surveys
+      let streakUpdated = false;
+      if (survey.type === 'DAILY') {
+        const profile = await prisma.profile.findUnique({
+          where: { userId },
+        });
+
+        if (profile) {
+          const now = new Date();
+          let newStreak = 1;
+          let lastDailyDate = profile.lastDailySurveyDate;
+
+          if (lastDailyDate) {
+            const lastDate = new Date(lastDailyDate);
+            const hoursSinceLastSurvey = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60);
+
+            // Check if last survey was within 24 hours (already completed today, keep streak)
+            if (hoursSinceLastSurvey < 24) {
+              // Still within 24-hour window, keep current streak (already completed today)
+              newStreak = profile.currentStreak;
+            } else if (hoursSinceLastSurvey < 48) {
+              // Between 24-48 hours, increment streak (they completed it within the window, continuing streak)
+              newStreak = profile.currentStreak + 1;
+            }
+            // If more than 48 hours have passed, streak is broken (skipped a day), reset to 1
+          }
+
+          const newLongestStreak = Math.max(profile.longestStreak, newStreak);
+
+          await prisma.profile.update({
+            where: { userId },
+            data: {
+              currentStreak: newStreak,
+              longestStreak: newLongestStreak,
+              lastDailySurveyDate: now, // Store exact timestamp
+            },
+          });
+
+          streakUpdated = true;
+        }
+      }
+
       return {
         success: true,
         totalCoinsEarned,
+        streakUpdated,
       };
     }),
 });

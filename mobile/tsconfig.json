@@ -8,6 +8,9 @@
       ],
       "@flick/shared": [
         "../shared/src"
+      ],
+      "@flick/backend/*": [
+        "../backend/*"
       ]
     }
   },

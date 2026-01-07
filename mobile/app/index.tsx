@@ -3,7 +3,8 @@ import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { api } from '@/lib/api';
 import { hasCompletedOnboarding } from '@/components/Onboarding';
-import { isAuthenticated, hasBeenAuthenticated } from '@/lib/auth';
+import { isAuthenticated, hasBeenAuthenticated, shouldSkipGuestSurvey } from '@/lib/auth';
+import { hasCompletedGuestSurvey } from '@/lib/guest';
 import { DevMenu } from '@/components/DevMenu';
 import { colors, spacing } from '@/lib/tokens';
 
@@ -44,7 +45,6 @@ export default function Index() {
       }
 
       // Onboarding completed, check if user chose to skip guest survey (by clicking login)
-      const { shouldSkipGuestSurvey } = await import('@/lib/auth');
       const skipGuest = await shouldSkipGuestSurvey();
       
       if (skipGuest) {
@@ -54,7 +54,6 @@ export default function Index() {
       }
       
       // Check guest survey
-      const { hasCompletedGuestSurvey } = await import('@/lib/guest');
       const guestCompleted = await hasCompletedGuestSurvey();
       
       if (!guestCompleted) {
@@ -73,7 +72,7 @@ export default function Index() {
   if (isChecking) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color={colors.flickBlue} />
+        <ActivityIndicator size="large" color={colors.flickTeal} />
       </View>
     );
   }
@@ -100,7 +99,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.background.primary,
     padding: spacing.lg,
   },
   emoji: {

@@ -12,8 +12,9 @@ export function serializeDates<T extends Record<string, any>>(
 ): T {
   const serialized = { ...obj };
   for (const field of dateFields) {
-    if (serialized[field] instanceof Date) {
-      (serialized[field] as any) = serializeDate(serialized[field] as Date);
+    const value: any = serialized[field];
+    if (value instanceof Date) {
+      (serialized[field] as any) = serializeDate(value);
     }
   }
   return serialized;

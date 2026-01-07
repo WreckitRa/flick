@@ -1,21 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  TouchableOpacity,
   Animated,
+  Easing,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { getGuestCoinsEarned } from '@/lib/guest';
-import { colors, spacing, borderRadius, typography } from '@/lib/tokens';
+import { colors, spacing, borderRadius, typography, shadows } from '@/lib/tokens';
+import { ScreenContainer, Button, Confetti } from '@/components/ui';
+import { triggerHaptic } from '@/lib/haptics';
 
 export default function SignupWallPage() {
   const router = useRouter();
   const [coinsEarned, setCoinsEarned] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const pulseAnim = new Animated.Value(1);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
 
   useEffect(() => {
     const loadCoins = async () => {
@@ -23,17 +27,44 @@ export default function SignupWallPage() {
       setCoinsEarned(coins);
       setIsLoading(false);
 
+      // Show confetti celebration
+      setShowConfetti(true);
+      triggerHaptic('success').catch(() => {});
+      
+      // Stop confetti after 3 seconds
+      setTimeout(() => {
+        setShowConfetti(false);
+      }, 3000);
+
+      // Entrance animation
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 600,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          tension: 50,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
       // Pulse animation for coins
       Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
-            toValue: 1.1,
-            duration: 1000,
+            toValue: 1.08,
+            duration: 1200,
+            easing: Easing.inOut(Easing.ease),
             useNativeDriver: true,
           }),
           Animated.timing(pulseAnim, {
             toValue: 1,
-            duration: 1000,
+            duration: 1200,
+            easing: Easing.inOut(Easing.ease),
             useNativeDriver: true,
           }),
         ])
@@ -45,114 +76,157 @@ export default function SignupWallPage() {
 
   if (isLoading) {
     return (
-      <View style={styles.container}>
+      <ScreenContainer style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading...</Text>
-      </View>
+      </ScreenContainer>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+    <ScreenContainer style={styles.container}>
+      {showConfetti && <Confetti count={80} duration={3000} />}
+      <Animated.View
+        style={[
+          styles.content,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
       >
-        {/* Coins Display */}
-        <View style={styles.coinsContainer}>
-          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-            <Text style={styles.coinsEmoji}>🪙</Text>
-          </Animated.View>
-          <Text style={styles.coinsAmount}>{coinsEarned}</Text>
-          <Text style={styles.coinsLabel}>Flick Coins</Text>
-        </View>
+        {/* Coins Display - Big and Bold */}
+        <Animated.View style={[styles.coinsCard, { transform: [{ scale: pulseAnim }] }]}>
+          <Text style={styles.coinsPretext}>You've Earned</Text>
+          <View style={styles.coinsDisplay}>
+            <Text style={styles.coinsAmount}>{coinsEarned}</Text>
+            <Text style={styles.coinsIcon}>🪙</Text>
+          </View>
+          <Text style={styles.coinsLabel}>Flick Coins!</Text>
+        </Animated.View>
 
         {/* Main Message */}
         <View style={styles.messageContainer}>
-          <Text style={styles.title}>Don't lose your Flick Coins 👀</Text>
+          <Text style={styles.title}>Claim Your Rewards! 🚀</Text>
           <Text style={styles.subtitle}>
-            Save your rewards and unlock personalized insights.
+            Create your free account to save your coins and start earning more every day
           </Text>
         </View>
 
-        {/* Benefits */}
-        <View style={styles.benefitsContainer}>
-          <View style={styles.benefit}>
-            <Text style={styles.benefitEmoji}>💾</Text>
-            <Text style={styles.benefitText}>Save your {coinsEarned} coins</Text>
+        {/* Quick Benefits - Compact */}
+        <View style={styles.benefitsRow}>
+          <View style={styles.benefitItem}>
+            <Text style={styles.benefitIcon}>💰</Text>
+            <Text style={styles.benefitLabel}>Keep Earning</Text>
           </View>
-          <View style={styles.benefit}>
-            <Text style={styles.benefitEmoji}>📊</Text>
-            <Text style={styles.benefitText}>See personalized insights</Text>
+          <View style={styles.benefitItem}>
+            <Text style={styles.benefitIcon}>📊</Text>
+            <Text style={styles.benefitLabel}>Get Insights</Text>
           </View>
-          <View style={styles.benefit}>
-            <Text style={styles.benefitEmoji}>🎯</Text>
-            <Text style={styles.benefitText}>Earn more coins daily</Text>
+          <View style={styles.benefitItem}>
+            <Text style={styles.benefitIcon}>🎁</Text>
+            <Text style={styles.benefitLabel}>Win Rewards</Text>
           </View>
-          <View style={styles.benefit}>
-            <Text style={styles.benefitEmoji}>🎁</Text>
-            <Text style={styles.benefitText}>Redeem for rewards</Text>
-          </View>
-        </View>
-
-        {/* Trust Microcopy */}
-        <View style={styles.trustBox}>
-          <Text style={styles.trustText}>🔒 No spam. No long surveys. Your data stays anonymous.</Text>
         </View>
 
         {/* Action Buttons */}
         <View style={styles.actionsContainer}>
-          <TouchableOpacity
-            style={styles.primaryButton}
+          <Button
+            title="Claim My Coins 🎉"
             onPress={() => router.push('/auth/signup')}
-          >
-            <Text style={styles.primaryButtonText}>Create free account</Text>
-          </TouchableOpacity>
+            variant="secondary"
+            style={styles.primaryButton}
+          />
 
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={() => router.push('/auth/login')}
-          >
-            <Text style={styles.secondaryButtonText}>I already have an account</Text>
-          </TouchableOpacity>
+          <Text style={styles.loginText}>
+            Already have an account?{' '}
+            <Text style={styles.loginLink} onPress={() => router.push('/auth/login')}>
+              Sign in
+            </Text>
+          </Text>
         </View>
-      </ScrollView>
-    </View>
+
+        {/* Trust Badge */}
+        <View style={styles.trustBadge}>
+          <Text style={styles.trustText}>🔒 No spam • Quick signup • Your data stays anonymous</Text>
+        </View>
+      </Animated.View>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.gray[50],
   },
-  scrollContent: {
-    flexGrow: 1,
-    padding: spacing.lg,
-    paddingTop: spacing.xxl,
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   loadingText: {
     ...typography.body,
     color: colors.gray[600],
-    textAlign: 'center',
   },
-  coinsContainer: {
+  content: {
+    flex: 1,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xxl,
+    justifyContent: 'center',
+  },
+  coinsCard: {
+    backgroundColor: colors.background.elevated,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xl,
+    paddingVertical: spacing.xxl,
     alignItems: 'center',
     marginBottom: spacing.xl,
+    borderWidth: 4,
+    borderColor: colors.flickGold,
+    borderBottomWidth: 8,
+    borderBottomColor: colors.flickGoldDark,
+    ...shadows.xl,
+    shadowColor: colors.flickGold,
   },
-  coinsEmoji: {
-    fontSize: 64,
+  coinsPretext: {
+    ...typography.bodyLarge,
+    fontWeight: '700',
+    color: colors.text.secondary,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 1,
+  },
+  coinsDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
     marginBottom: spacing.sm,
+    width: '100%',
   },
   coinsAmount: {
-    ...typography.largeTitle,
-    color: colors.flickBlue,
-    fontWeight: 'bold',
-    marginBottom: spacing.xs,
+    ...typography.display,
+    fontSize: 72,
+    fontWeight: '900',
+    color: colors.text.primary,
+    letterSpacing: -3,
+    lineHeight: 80,
+    textShadowColor: colors.flickGold,
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 0,
+    includeFontPadding: false,
+  },
+  coinsIcon: {
+    fontSize: 56,
+    lineHeight: 64,
+    includeFontPadding: false,
   },
   coinsLabel: {
-    ...typography.body,
-    color: colors.gray[600],
+    ...typography.headline,
+    fontWeight: '800',
+    color: colors.text.primary,
+    textAlign: 'center',
+    marginTop: spacing.xs,
   },
   messageContainer: {
     alignItems: 'center',
@@ -160,80 +234,70 @@ const styles = StyleSheet.create({
   },
   title: {
     ...typography.largeTitle,
-    color: colors.gray[900],
+    fontSize: 34,
+    color: colors.text.primary,
     textAlign: 'center',
     marginBottom: spacing.md,
   },
   subtitle: {
-    ...typography.body,
-    color: colors.gray[600],
+    ...typography.bodyLarge,
+    color: colors.text.secondary,
     textAlign: 'center',
-    lineHeight: 24,
-    paddingHorizontal: spacing.md,
+    lineHeight: 28,
+    paddingHorizontal: spacing.sm,
+    fontWeight: '500',
   },
-  benefitsContainer: {
-    marginBottom: spacing.xl,
-    gap: spacing.md,
-  },
-  benefit: {
+  benefitsRow: {
     flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: spacing.xl,
+    paddingHorizontal: spacing.sm,
+  },
+  benefitItem: {
     alignItems: 'center',
-    backgroundColor: colors.gray[100],
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-  },
-  benefitEmoji: {
-    fontSize: 24,
-    marginRight: spacing.md,
-  },
-  benefitText: {
-    ...typography.body,
-    color: colors.gray[900],
     flex: 1,
   },
-  trustBox: {
-    backgroundColor: colors.gray[100],
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.xl,
-    alignItems: 'center',
+  benefitIcon: {
+    fontSize: 36,
+    marginBottom: spacing.sm,
   },
-  trustText: {
+  benefitLabel: {
     ...typography.caption,
-    color: colors.gray[600],
+    color: colors.text.secondary,
     textAlign: 'center',
+    fontWeight: '700',
   },
   actionsContainer: {
-    gap: spacing.md,
+    gap: spacing.lg,
+    marginBottom: spacing.lg,
   },
   primaryButton: {
-    backgroundColor: colors.flickYellow,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md + spacing.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 52,
-    shadowColor: colors.flickYellow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowColor: colors.flickGold,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  primaryButtonText: {
+  loginText: {
     ...typography.body,
-    color: colors.black,
-    fontWeight: '600',
-  },
-  secondaryButton: {
-    padding: spacing.md + spacing.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 52,
-  },
-  secondaryButtonText: {
-    ...typography.body,
-    color: colors.flickBlue,
+    color: colors.text.secondary,
+    textAlign: 'center',
     fontWeight: '500',
+  },
+  loginLink: {
+    color: colors.flickTeal,
+    fontWeight: '800',
+    textDecorationLine: 'underline',
+  },
+  trustBadge: {
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
+  trustText: {
+    ...typography.bodySmall,
+    color: colors.text.secondary,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
 

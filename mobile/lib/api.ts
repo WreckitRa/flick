@@ -1,6 +1,6 @@
 import { createTRPCReact } from '@trpc/react-query';
 import { httpBatchLink } from '@trpc/client';
-import type { AppRouter } from '@flick/backend/src/server';
+import type { AppRouter } from '@/types/router';
 import { getAuthToken } from './auth';
 
 // Create tRPC React hooks

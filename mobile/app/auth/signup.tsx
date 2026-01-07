@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,13 +9,15 @@ import {
   Platform,
   ScrollView,
   Alert,
-  ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { api } from '@/lib/api';
 import { colors, spacing, borderRadius, typography } from '@/lib/tokens';
 import { setAuthToken } from '@/lib/auth';
-import { getGuestUserId, clearGuestData } from '@/lib/guest';
+import { getGuestUserId, clearGuestData, setGuestCoinsEarned } from '@/lib/guest';
+import { ScreenContainer, Button } from '@/components/ui';
+import { triggerHaptic } from '@/lib/haptics';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -25,6 +27,24 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   const signupMutation = api.auth.signup.useMutation({
     onSuccess: async (data) => {
@@ -46,7 +66,6 @@ export default function SignupPage() {
         // Only show reward confirmation if user completed guest survey before signing up
         if (data.hasGuestData && data.guestCoinsTransferred) {
           // Update local coins for reward confirmation screen
-          const { setGuestCoinsEarned } = await import('@/lib/guest');
           await setGuestCoinsEarned(data.guestCoinsTransferred);
           // Show reward confirmation screen
           router.replace('/auth/reward-confirmation');
@@ -54,7 +73,6 @@ export default function SignupPage() {
           // No guest data - user signed up without completing guest survey
           // Clear any guest data and go directly to home
           try {
-            const { clearGuestData } = await import('@/lib/guest');
             await clearGuestData();
           } catch (error) {
             console.error('Error clearing guest data:', error);
@@ -119,34 +137,63 @@ export default function SignupPage() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <ScreenContainer style={styles.screenContainer}>
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        bounces={false}
       >
         {/* Header Section */}
-        <View style={styles.header}>
-          <Text style={styles.emoji}>🎯</Text>
-          <Text style={styles.title}>Your voice matters</Text>
+        <Animated.View
+          style={[
+            styles.header,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          <Text style={styles.emoji}>🎉</Text>
+          <Text style={styles.title}>Join Flick</Text>
           <Text style={styles.subtitle}>
-            Join thousands sharing insights that shape tomorrow. Start earning coins in seconds.
+            Share your voice, earn rewards. Quick & free signup.
           </Text>
-        </View>
+        </Animated.View>
 
         {/* Trust Microcopy */}
-        <View style={styles.trustBox}>
-          <Text style={styles.trustText}>🔒 No spam. No long surveys. Your data stays anonymous.</Text>
-        </View>
+        <Animated.View
+          style={[
+            styles.trustBox,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          <Text style={styles.trustText}>🔒  No spam • Private • Anonymous</Text>
+        </Animated.View>
 
         {/* Auth Method Toggle */}
-        <View style={styles.toggleContainer}>
+        <Animated.View
+          style={[
+            styles.toggleContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
           <TouchableOpacity
             style={[styles.toggleButton, authMethod === 'email' && styles.toggleButtonActive]}
-            onPress={() => setAuthMethod('email')}
+            onPress={() => {
+              triggerHaptic('light').catch(() => {});
+              setAuthMethod('email');
+            }}
           >
             <Text
               style={[styles.toggleText, authMethod === 'email' && styles.toggleTextActive]}
@@ -156,7 +203,10 @@ export default function SignupPage() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.toggleButton, authMethod === 'phone' && styles.toggleButtonActive]}
-            onPress={() => setAuthMethod('phone')}
+            onPress={() => {
+              triggerHaptic('light').catch(() => {});
+              setAuthMethod('phone');
+            }}
           >
             <Text
               style={[styles.toggleText, authMethod === 'phone' && styles.toggleTextActive]}
@@ -164,7 +214,7 @@ export default function SignupPage() {
               Phone
             </Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
 
         {/* Form */}
         <View style={styles.form}>
@@ -204,8 +254,8 @@ export default function SignupPage() {
             <Text style={styles.label}>Password</Text>
             <TextInput
               style={styles.input}
-              placeholder="At least 8 characters"
-              placeholderTextColor={colors.gray[600]}
+              placeholder="Minimum 8 characters"
+              placeholderTextColor={colors.gray[500]}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -213,6 +263,11 @@ export default function SignupPage() {
               autoCorrect={false}
               editable={!isLoading}
             />
+            {password.length > 0 && password.length < 8 && (
+              <Text style={styles.hint}>
+                {8 - password.length} more character{8 - password.length !== 1 ? 's' : ''} needed
+              </Text>
+            )}
           </View>
 
           <View style={styles.inputContainer}>
@@ -230,17 +285,14 @@ export default function SignupPage() {
             />
           </View>
 
-          <TouchableOpacity
-            style={[styles.button, isLoading && styles.buttonDisabled]}
+          <Button
+            title="Create My Account"
             onPress={handleSignup}
             disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color={colors.white} />
-            ) : (
-              <Text style={styles.buttonText}>Create Account</Text>
-            )}
-          </TouchableOpacity>
+            loading={isLoading}
+            style={styles.button}
+            variant="secondary"
+          />
 
           <TouchableOpacity
             style={styles.loginLink}
@@ -254,81 +306,107 @@ export default function SignupPage() {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screenContainer: {
+    backgroundColor: colors.background.primary,
+  },
+  keyboardView: {
     flex: 1,
-    backgroundColor: colors.white,
   },
   scrollContent: {
     flexGrow: 1,
-    padding: spacing.lg,
-    paddingTop: spacing.xxl,
+    justifyContent: 'center',
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
   },
   header: {
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.sm,
   },
   emoji: {
-    fontSize: 64,
-    marginBottom: spacing.md,
+    fontSize: 48,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
   },
   title: {
     ...typography.largeTitle,
+    fontSize: 28,
     color: colors.gray[900],
     textAlign: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
+    fontWeight: '900',
+    letterSpacing: -0.8,
   },
   subtitle: {
     ...typography.body,
+    fontSize: 14,
     color: colors.gray[600],
     textAlign: 'center',
-    paddingHorizontal: spacing.md,
-    lineHeight: 24,
+    paddingHorizontal: spacing.xl,
+    lineHeight: 20,
+    fontWeight: '500',
   },
   trustBox: {
-    backgroundColor: colors.gray[100],
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.lg,
+    backgroundColor: colors.gray[50],
+    paddingVertical: spacing.xs + 2,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.full,
+    marginBottom: spacing.md,
     alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    alignSelf: 'center',
   },
   trustText: {
     ...typography.caption,
+    fontSize: 12,
     color: colors.gray[600],
     textAlign: 'center',
+    fontWeight: '600',
+    letterSpacing: 0.2,
   },
   toggleContainer: {
     flexDirection: 'row',
-    backgroundColor: colors.gray[100],
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.gray[50],
+    borderRadius: borderRadius.xl,
     padding: 4,
     marginBottom: spacing.lg,
+    borderWidth: 2,
+    borderColor: colors.gray[200],
   },
   toggleButton: {
     flex: 1,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm + 4,
     alignItems: 'center',
-    borderRadius: borderRadius.sm,
+    borderRadius: borderRadius.lg,
   },
   toggleButtonActive: {
-    backgroundColor: colors.white,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    backgroundColor: colors.flickGold,
+    shadowColor: colors.flickGold,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 2,
+    borderColor: colors.flickGoldDark,
+    borderBottomWidth: 3,
   },
   toggleText: {
     ...typography.body,
-    color: colors.gray[600],
-    fontWeight: '500',
+    fontSize: 15,
+    color: colors.gray[500],
+    fontWeight: '600',
+    letterSpacing: 0.2,
   },
   toggleTextActive: {
-    color: colors.flickBlue,
-    fontWeight: '600',
+    color: colors.text.primary,
+    fontWeight: '800',
   },
   form: {
     width: '100%',
@@ -338,47 +416,52 @@ const styles = StyleSheet.create({
   },
   label: {
     ...typography.body,
-    color: colors.gray[900],
+    fontSize: 14,
+    color: colors.gray[700],
     fontWeight: '600',
     marginBottom: spacing.xs,
+    letterSpacing: 0,
   },
   input: {
     ...typography.body,
-    backgroundColor: colors.gray[100],
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
+    fontSize: 16,
+    backgroundColor: colors.background.elevated,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.sm + 4,
+    paddingHorizontal: spacing.md,
     color: colors.gray[900],
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.gray[200],
+    borderBottomWidth: 3,
+    borderBottomColor: colors.gray[300],
+    minHeight: 50,
   },
   button: {
-    backgroundColor: colors.flickBlue,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.md,
-    minHeight: 52,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    ...typography.body,
-    color: colors.white,
-    fontWeight: '600',
+    marginTop: spacing.lg,
+    marginBottom: spacing.md,
   },
   loginLink: {
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
     alignItems: 'center',
+    paddingVertical: spacing.sm,
   },
   loginLinkText: {
     ...typography.body,
+    fontSize: 15,
     color: colors.gray[600],
+    fontWeight: '600',
+    textAlign: 'center',
   },
   loginLinkBold: {
-    color: colors.flickBlue,
-    fontWeight: '600',
+    color: colors.flickTeal,
+    fontWeight: '800',
+  },
+  hint: {
+    ...typography.caption,
+    fontSize: 12,
+    color: colors.gray[500],
+    marginTop: 4,
+    fontWeight: '500',
   },
 });
 

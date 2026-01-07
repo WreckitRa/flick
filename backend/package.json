@@ -7,13 +7,16 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "postinstall": "prisma generate",
+    "migrate:deploy": "prisma migrate deploy"
   },
   "dependencies": {
     "@flick/shared": "workspace:*",
     "@prisma/client": "5.22.0",
     "@trpc/server": "11.7.2",
     "bcryptjs": "^3.0.3",
+    "csv-parse": "^5.5.3",
     "dotenv": "16.3.1",
     "jsonwebtoken": "^9.0.3",
     "superjson": "2.2.6",

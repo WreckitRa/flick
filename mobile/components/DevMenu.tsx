@@ -139,8 +139,8 @@ const styles = StyleSheet.create({
     color: colors.gray[600],
   },
   closeButton: {
-    backgroundColor: colors.flickBlue,
-    borderColor: colors.flickBlue,
+    backgroundColor: colors.flickTeal,
+    borderColor: colors.flickTeal,
     marginTop: spacing.md,
     marginBottom: 0,
   },
