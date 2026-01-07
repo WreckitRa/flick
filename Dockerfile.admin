@@ -14,7 +14,7 @@ COPY tsconfig.json ./tsconfig.json
 COPY shared ./shared
 COPY admin ./admin
 
-# Set dummy DATABASE_URL to prevent Prisma errors during install
+# Set dummy DATABASE_URL to prevent Prisma errors
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 
 # Install only admin and shared dependencies
