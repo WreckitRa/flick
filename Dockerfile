@@ -5,8 +5,9 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
-# Copy workspace files
+# Copy workspace files (including tsconfig.json)
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY tsconfig.json ./tsconfig.json
 COPY shared ./shared
 COPY backend ./backend
 
@@ -17,7 +18,8 @@ RUN pnpm install --frozen-lockfile
 WORKDIR /app/backend
 RUN pnpm run postinstall
 
-# Build backend
+# Build backend (TypeScript compilation)
+WORKDIR /app/backend
 RUN pnpm build
 
 # Run migrations
