@@ -14,8 +14,8 @@ COPY tsconfig.json ./tsconfig.json
 COPY shared ./shared
 COPY admin ./admin
 
-# Install dependencies from monorepo root
-RUN pnpm install --frozen-lockfile
+# Install only admin and shared dependencies (skip backend/Prisma)
+RUN pnpm install --filter @flick/admin --filter @flick/shared --frozen-lockfile
 
 # Build Next.js app
 WORKDIR /app/admin
