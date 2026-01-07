@@ -22,9 +22,6 @@ RUN pnpm run postinstall
 WORKDIR /app/backend
 RUN pnpm build
 
-# Run migrations
-RUN pnpm run migrate:deploy
-
-# Start server
+# Start server (migrations run at startup via start script)
 WORKDIR /app/backend
-CMD ["node", "dist/index.js"]
+CMD ["pnpm", "start"]
