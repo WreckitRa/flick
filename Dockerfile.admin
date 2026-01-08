@@ -14,7 +14,7 @@ COPY tsconfig.json ./tsconfig.json
 COPY shared ./shared
 COPY admin ./admin
 
-# Copy backend source files for TypeScript type resolution only
+# Copy backend source files for TypeScript type resolution
 COPY backend/src ./backend/src
 COPY backend/tsconfig.json ./backend/tsconfig.json
 COPY backend/package.json ./backend/package.json
@@ -22,8 +22,9 @@ COPY backend/package.json ./backend/package.json
 # Set dummy DATABASE_URL to prevent Prisma errors
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 
-# Install only admin and shared dependencies (backend not needed for runtime)
-RUN pnpm install --filter @flick/admin --filter @flick/shared --frozen-lockfile
+# Install all dependencies needed for type resolution (skip Prisma scripts)
+ENV PRISMA_SKIP_POSTINSTALL_GENERATE=true
+RUN pnpm install --filter @flick/admin --filter @flick/shared --filter @flick/backend --frozen-lockfile --ignore-scripts
 
 # Build Next.js app
 WORKDIR /app/admin
