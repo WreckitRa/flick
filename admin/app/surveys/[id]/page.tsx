@@ -533,7 +533,7 @@ function QuestionsEditor({ surveyId }: { surveyId: string }) {
       )}
 
       <div className="space-y-4">
-        {survey.questions.map((question, index) => (
+        {survey.questions.map((question: { id: string; text: string; type: string; coinsReward: number; explanation?: string | null; order: number; options?: any[]; [key: string]: any }, index: number) => (
           <div key={question.id}>
             {editingQuestion === question.id ? (
               <QuestionEditor
@@ -557,7 +557,7 @@ function QuestionsEditor({ surveyId }: { surveyId: string }) {
                   index={index}
                   onEdit={() => setEditingQuestion(question.id)}
                   onAddOptions={() => setShowOptionFormForQuestion(question.id)}
-                  showAddOptions={question.options.length === 0}
+                  showAddOptions={(question.options?.length || 0) === 0}
                 />
                 {/* Show option form for newly created question or when explicitly opened */}
                 {showOptionFormForQuestion === question.id && (
@@ -578,7 +578,7 @@ function QuestionsEditor({ surveyId }: { surveyId: string }) {
                       questionId={question.id}
                       onSave={(data) => {
                         // For RATING questions, prevent adding more than 5 options
-                        if (question.type === 'RATING' && question.options.length >= 5) {
+                        if (question.type === 'RATING' && (question.options?.length || 0) >= 5) {
                           alert(
                             'Rating questions can only have 5 options (1-5). Please edit existing options instead.'
                           );
@@ -595,7 +595,7 @@ function QuestionsEditor({ surveyId }: { surveyId: string }) {
                         setNewlyCreatedQuestionId(null);
                       }}
                       questionType={question.type}
-                      existingOptionsCount={question.options.length}
+                      existingOptionsCount={question.options?.length || 0}
                     />
                     <div className="mt-4 pt-4 border-t border-slate-200 flex gap-3">
                       <button
