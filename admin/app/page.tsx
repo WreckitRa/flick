@@ -7,11 +7,12 @@ import { trpc } from '@/lib/trpc';
 export default function HomePage() {
   const { data: surveys } = trpc.survey.list.useQuery({});
   const { data: users } = trpc.user.list.useQuery({ page: 1, limit: 1 });
-  
+
   const totalSurveys = surveys?.length || 0;
   const publishedSurveys = surveys?.filter((s: { published: boolean }) => s.published).length || 0;
   const totalUsers = users?.pagination.total || 0;
-  const totalAnswers = surveys?.reduce((sum: number, s: { answerCount: number }) => sum + s.answerCount, 0) || 0;
+  const totalAnswers =
+    surveys?.reduce((sum: number, s: { answerCount: number }) => sum + s.answerCount, 0) || 0;
 
   const stats = [
     {
@@ -38,7 +39,9 @@ export default function HomePage() {
     {
       name: 'Published',
       value: publishedSurveys,
-      change: `${totalSurveys > 0 ? Math.round((publishedSurveys / totalSurveys) * 100) : 0}% of surveys`,
+      change: `${
+        totalSurveys > 0 ? Math.round((publishedSurveys / totalSurveys) * 100) : 0
+      }% of surveys`,
       icon: '✅',
       color: 'from-amber-500 to-amber-600',
     },
@@ -70,12 +73,16 @@ export default function HomePage() {
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
                   <div className="flex items-center justify-between mb-4">
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg`}>
+                    <div
+                      className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg`}
+                    >
                       <span className="text-2xl">{stat.icon}</span>
                     </div>
                   </div>
                   <div>
-                    <p className="text-3xl font-bold text-slate-900 mb-1">{stat.value.toLocaleString()}</p>
+                    <p className="text-3xl font-bold text-slate-900 mb-1">
+                      {stat.value.toLocaleString()}
+                    </p>
                     <p className="text-sm font-medium text-slate-700 mb-1">{stat.name}</p>
                     <p className="text-xs text-slate-500">{stat.change}</p>
                   </div>
@@ -93,7 +100,9 @@ export default function HomePage() {
                     href={action.href}
                     className={`group flex items-center gap-4 p-4 rounded-xl bg-gradient-to-br from-${action.color}-50 to-${action.color}-50/50 border border-${action.color}-200/60 hover:shadow-lg transition-all duration-200`}
                   >
-                    <div className={`w-10 h-10 rounded-lg bg-${action.color}-500 flex items-center justify-center text-white text-lg group-hover:scale-110 transition-transform`}>
+                    <div
+                      className={`w-10 h-10 rounded-lg bg-${action.color}-500 flex items-center justify-center text-white text-lg group-hover:scale-110 transition-transform`}
+                    >
                       {action.icon}
                     </div>
                     <span className="font-semibold text-slate-900">{action.name}</span>
@@ -108,29 +117,41 @@ export default function HomePage() {
                 <h2 className="text-xl font-bold text-slate-900 mb-4">Recent Surveys</h2>
                 {surveys && surveys.length > 0 ? (
                   <div className="space-y-3">
-                    {surveys.slice(0, 5).map((survey) => (
-                      <a
-                        key={survey.id}
-                        href={`/surveys/${survey.id}`}
-                        className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 transition-colors group"
-                      >
-                        <div className="flex-1">
-                          <p className="font-medium text-slate-900 group-hover:text-blue-600 transition-colors">
-                            {survey.title}
-                          </p>
-                          <p className="text-xs text-slate-500 mt-1">
-                            {survey.questionCount} questions • {survey.answerCount} answers
-                          </p>
-                        </div>
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          survey.published 
-                            ? 'bg-emerald-100 text-emerald-700' 
-                            : 'bg-slate-100 text-slate-600'
-                        }`}>
-                          {survey.published ? 'Published' : 'Draft'}
-                        </span>
-                      </a>
-                    ))}
+                    {surveys
+                      .slice(0, 5)
+                      .map(
+                        (survey: {
+                          id: string;
+                          title: string;
+                          questionCount: number;
+                          answerCount: number;
+                          published: boolean;
+                        }) => (
+                          <a
+                            key={survey.id}
+                            href={`/surveys/${survey.id}`}
+                            className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 transition-colors group"
+                          >
+                            <div className="flex-1">
+                              <p className="font-medium text-slate-900 group-hover:text-blue-600 transition-colors">
+                                {survey.title}
+                              </p>
+                              <p className="text-xs text-slate-500 mt-1">
+                                {survey.questionCount} questions • {survey.answerCount} answers
+                              </p>
+                            </div>
+                            <span
+                              className={`px-2 py-1 text-xs rounded-full ${
+                                survey.published
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : 'bg-slate-100 text-slate-600'
+                              }`}
+                            >
+                              {survey.published ? 'Published' : 'Draft'}
+                            </span>
+                          </a>
+                        )
+                      )}
                   </div>
                 ) : (
                   <p className="text-slate-500 text-center py-8">No surveys yet</p>
