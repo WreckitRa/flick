@@ -9,9 +9,9 @@ export default function HomePage() {
   const { data: users } = trpc.user.list.useQuery({ page: 1, limit: 1 });
   
   const totalSurveys = surveys?.length || 0;
-  const publishedSurveys = surveys?.filter(s => s.published).length || 0;
+  const publishedSurveys = surveys?.filter((s: { published: boolean }) => s.published).length || 0;
   const totalUsers = users?.pagination.total || 0;
-  const totalAnswers = surveys?.reduce((sum, s) => sum + s.answerCount, 0) || 0;
+  const totalAnswers = surveys?.reduce((sum: number, s: { answerCount: number }) => sum + s.answerCount, 0) || 0;
 
   const stats = [
     {
