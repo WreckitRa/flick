@@ -81,13 +81,13 @@ export default function UsersPage() {
                 <div className="glass rounded-xl p-4">
                   <p className="text-sm font-medium text-slate-600 mb-1">Active Streaks</p>
                   <p className="text-2xl font-bold text-slate-900">
-                    {data.users.filter((u: { profile?: { currentStreak?: number } }) => u.profile?.currentStreak && u.profile.currentStreak > 0).length}
+                    {data.users.filter((u) => u.profile?.currentStreak && u.profile.currentStreak > 0).length}
                   </p>
                 </div>
                 <div className="glass rounded-xl p-4">
                   <p className="text-sm font-medium text-slate-600 mb-1">With Profiles</p>
                   <p className="text-2xl font-bold text-slate-900">
-                    {data.users.filter((u: { profile?: any }) => u.profile).length}
+                    {data.users.filter((u) => u.profile).length}
                   </p>
                 </div>
                 <div className="glass rounded-xl p-4">
@@ -167,7 +167,7 @@ export default function UsersPage() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-slate-100">
-                        {data.users.map((user: { id: string; displayName?: string; email?: string; phone?: string; profile?: any; roles: string[]; createdAt: string; [key: string]: any }) => (
+                        {data.users.map((user) => (
                           <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div>
@@ -310,7 +310,7 @@ export default function UsersPage() {
           <CreateUserModal
             onClose={() => setShowCreateModal(false)}
             onSubmit={(data) => createMutation.mutate(data)}
-            isLoading={createMutation.isLoading}
+            isLoading={createMutation.isPending}
           />
         )}
 
@@ -323,7 +323,7 @@ export default function UsersPage() {
               setSelectedUser(null);
             }}
             onSubmit={(data) => updateMutation.mutate({ id: selectedUser.id, ...data })}
-            isLoading={updateMutation.isLoading}
+            isLoading={updateMutation.isPending}
           />
         )}
       </DashboardLayout>
@@ -468,7 +468,7 @@ function CreateUserModal({
                       } else {
                         setFormData({
                           ...formData,
-                          roles: formData.roles.filter((r) => r !== role),
+                          roles: formData.roles.filter((r: string) => r !== role),
                         });
                       }
                     }}
@@ -599,7 +599,7 @@ function EditUserModal({
                       } else {
                         setFormData({
                           ...formData,
-                          roles: formData.roles.filter((r) => r !== role),
+                          roles: formData.roles.filter((r: string) => r !== role),
                         });
                       }
                     }}

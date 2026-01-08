@@ -157,7 +157,7 @@ export default function SurveyEditorPage() {
                   </h1>
                   {!isNew && survey && (
                     <p className="text-sm text-slate-600 mt-1">
-                      {survey.questionCount} questions • {survey.answerCount} answers
+                      {survey.questions?.length || 0} questions
                     </p>
                   )}
                 </div>
@@ -240,7 +240,9 @@ export default function SurveyEditorPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">Type *</label>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        Type *
+                      </label>
                       <select
                         value={surveyData.type}
                         onChange={(e) => {
@@ -287,7 +289,7 @@ export default function SurveyEditorPage() {
 
                     <div className="pt-4 border-t border-slate-200">
                       <h3 className="text-sm font-bold text-slate-900 mb-3">Scheduling & Expiry</h3>
-                      
+
                       <div className="space-y-4">
                         <div>
                           <label className="block text-sm font-semibold text-slate-700 mb-2">
@@ -299,7 +301,9 @@ export default function SurveyEditorPage() {
                             onChange={(e) =>
                               setSurveyData({
                                 ...surveyData,
-                                publishAt: e.target.value ? new Date(e.target.value).toISOString() : null,
+                                publishAt: e.target.value
+                                  ? new Date(e.target.value).toISOString()
+                                  : null,
                               })
                             }
                             className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white"
@@ -316,12 +320,16 @@ export default function SurveyEditorPage() {
                           <select
                             value={surveyData.expiryType || ''}
                             onChange={(e) => {
-                              const value = e.target.value as 'SPECIFIC_DATE' | 'RELATIVE_DAYS' | '';
+                              const value = e.target.value as
+                                | 'SPECIFIC_DATE'
+                                | 'RELATIVE_DAYS'
+                                | '';
                               setSurveyData({
                                 ...surveyData,
                                 expiryType: value || null,
                                 expiresAt: value === 'SPECIFIC_DATE' ? surveyData.expiresAt : null,
-                                expiryDays: value === 'RELATIVE_DAYS' ? surveyData.expiryDays : null,
+                                expiryDays:
+                                  value === 'RELATIVE_DAYS' ? surveyData.expiryDays : null,
                               });
                             }}
                             className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white"
@@ -343,7 +351,9 @@ export default function SurveyEditorPage() {
                               onChange={(e) =>
                                 setSurveyData({
                                   ...surveyData,
-                                  expiresAt: e.target.value ? new Date(e.target.value).toISOString() : null,
+                                  expiresAt: e.target.value
+                                    ? new Date(e.target.value).toISOString()
+                                    : null,
                                 })
                               }
                               className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white"
@@ -385,14 +395,20 @@ export default function SurveyEditorPage() {
                         <div className="text-sm text-slate-600 space-y-2">
                           <div className="flex items-center justify-between">
                             <span className="font-medium text-slate-700">Questions:</span>
-                            <span className="font-semibold text-slate-900">{survey.questions.length}</span>
+                            <span className="font-semibold text-slate-900">
+                              {survey.questions.length}
+                            </span>
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="font-medium text-slate-700">Status:</span>
                             {surveyData.published ? (
-                              <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700">Published</span>
+                              <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700">
+                                Published
+                              </span>
                             ) : (
-                              <span className="px-2 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-600">Draft</span>
+                              <span className="px-2 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-600">
+                                Draft
+                              </span>
                             )}
                           </div>
                         </div>
@@ -438,31 +454,31 @@ function QuestionsEditor({ surveyId }: { surveyId: string }) {
       // After creating question, auto-create options for TRUE_FALSE and RATING
       if (data.type === 'TRUE_FALSE') {
         // Create True and False options
-        await createOptionMutation.mutateAsync({ 
-          questionId: data.id, 
-          text: 'True', 
-          emoji: '✅', 
-          order: 0 
+        await createOptionMutation.mutateAsync({
+          questionId: data.id,
+          text: 'True',
+          emoji: '✅',
+          order: 0,
         });
-        await createOptionMutation.mutateAsync({ 
-          questionId: data.id, 
-          text: 'False', 
-          emoji: '❌', 
-          order: 1 
+        await createOptionMutation.mutateAsync({
+          questionId: data.id,
+          text: 'False',
+          emoji: '❌',
+          order: 1,
         });
       } else if (data.type === 'RATING') {
         // Create exactly 5 rating options (1-5) with numbers only (no emoji by default)
         // Admin can add a single emoji per number as a label if desired
         for (let i = 0; i < 5; i++) {
-          await createOptionMutation.mutateAsync({ 
-            questionId: data.id, 
+          await createOptionMutation.mutateAsync({
+            questionId: data.id,
             text: String(i + 1), // Value: 1, 2, 3, 4, 5
             emoji: '', // No emoji by default - admin can add one per number
-            order: i 
+            order: i,
           });
         }
       }
-      
+
       // Refetch and then show option form
       await refetch();
       setNewlyCreatedQuestionId(data.id);
@@ -494,9 +510,7 @@ function QuestionsEditor({ surveyId }: { surveyId: string }) {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">
-            Questions
-          </h2>
+          <h2 className="text-xl font-bold text-slate-900">Questions</h2>
           <p className="text-sm text-slate-600 mt-1">{survey.questions.length} total questions</p>
         </div>
         <button
@@ -565,7 +579,9 @@ function QuestionsEditor({ surveyId }: { surveyId: string }) {
                       onSave={(data) => {
                         // For RATING questions, prevent adding more than 5 options
                         if (question.type === 'RATING' && question.options.length >= 5) {
-                          alert('Rating questions can only have 5 options (1-5). Please edit existing options instead.');
+                          alert(
+                            'Rating questions can only have 5 options (1-5). Please edit existing options instead.'
+                          );
                           return;
                         }
                         createOptionMutation.mutate(data);
@@ -651,13 +667,17 @@ function QuestionCard({
             <h3 className="text-lg font-bold text-slate-900">{question.text}</h3>
           </div>
           <div className="flex items-center gap-4 text-sm text-slate-600 ml-12">
-            <span className="capitalize font-medium">{question.type.toLowerCase().replace('_', ' ')}</span>
+            <span className="capitalize font-medium">
+              {question.type.toLowerCase().replace('_', ' ')}
+            </span>
             <span>•</span>
             <span>{question.options.length} options</span>
             {question.coinsReward > 0 && (
               <>
                 <span>•</span>
-                <span className="font-semibold text-amber-600">🪙 {question.coinsReward} coins</span>
+                <span className="font-semibold text-amber-600">
+                  🪙 {question.coinsReward} coins
+                </span>
               </>
             )}
           </div>
@@ -869,13 +889,15 @@ function QuestionEditor({
         // Refetch to get updated data
         await onRefetch();
         // Wait a bit for the data to be available
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
+        await new Promise((resolve) => setTimeout(resolve, 300));
+
         // Get updated question from survey data
         const updatedQuestion = surveyData?.questions?.find((q: any) => q.id === question.id);
         if (updatedQuestion && updatedQuestion.options && updatedQuestion.options.length > 0) {
           // Renumber all options to be sequential (1, 2, 3, ...)
-          const sortedOptions = [...updatedQuestion.options].sort((a: any, b: any) => a.order - b.order);
+          const sortedOptions = [...updatedQuestion.options].sort(
+            (a: any, b: any) => a.order - b.order
+          );
           // Update each option with new sequential values
           for (let i = 0; i < sortedOptions.length; i++) {
             await updateOptionMutation.mutateAsync({
@@ -993,7 +1015,9 @@ function QuestionEditor({
             onClick={() => {
               // For RATING questions, prevent adding more than 5 options
               if (question.type === 'RATING' && question.options.length >= 5) {
-                alert('Rating questions can only have 5 options (1-5). Please edit existing options instead.');
+                alert(
+                  'Rating questions can only have 5 options (1-5). Please edit existing options instead.'
+                );
                 return;
               }
               setShowOptionForm(true);
@@ -1011,7 +1035,9 @@ function QuestionEditor({
             onSave={(data) => {
               // For RATING questions, prevent adding more than 5 options
               if (question.type === 'RATING' && question.options.length >= 5) {
-                alert('Rating questions can only have 5 options (1-5). Please edit existing options instead.');
+                alert(
+                  'Rating questions can only have 5 options (1-5). Please edit existing options instead.'
+                );
                 return;
               }
               createOptionMutation.mutate(data);
@@ -1036,10 +1062,11 @@ function QuestionEditor({
                       const sortedOptions = [...question.options]
                         .filter((o: any) => o.id !== option.id)
                         .sort((a: any, b: any) => a.order - b.order);
-                      const currentIndex = sortedOptions.findIndex((o: any) => o.order > option.order);
-                      const newValue = currentIndex === -1 
-                        ? sortedOptions.length + 1 
-                        : currentIndex + 1;
+                      const currentIndex = sortedOptions.findIndex(
+                        (o: any) => o.order > option.order
+                      );
+                      const newValue =
+                        currentIndex === -1 ? sortedOptions.length + 1 : currentIndex + 1;
                       data.text = String(newValue);
                       data.order = newValue - 1;
                     }
@@ -1055,11 +1082,13 @@ function QuestionEditor({
                   onRefetch={onRefetch}
                 />
               ) : (
-                <div className={`flex items-center gap-3 p-4 rounded-xl border transition-colors ${
-                  question.type === 'RATING' 
-                    ? 'bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200/60 hover:border-blue-300/80' 
-                    : 'bg-slate-50/80 border-slate-200/60 hover:bg-slate-100/80'
-                }`}>
+                <div
+                  className={`flex items-center gap-3 p-4 rounded-xl border transition-colors ${
+                    question.type === 'RATING'
+                      ? 'bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200/60 hover:border-blue-300/80'
+                      : 'bg-slate-50/80 border-slate-200/60 hover:bg-slate-100/80'
+                  }`}
+                >
                   {question.type === 'RATING' ? (
                     <>
                       <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-white border-2 border-blue-300 shadow-sm">
@@ -1071,7 +1100,9 @@ function QuestionEditor({
                       </div>
                       <div className="flex-1">
                         <div className="font-semibold text-slate-900">
-                          {option.emoji ? `${option.emoji} ${option.text}` : `Rating ${option.text}`}
+                          {option.emoji
+                            ? `${option.emoji} ${option.text}`
+                            : `Rating ${option.text}`}
                         </div>
                         {option.emoji && (
                           <div className="text-xs text-slate-500 mt-0.5">Number: {option.text}</div>
@@ -1083,9 +1114,7 @@ function QuestionEditor({
                       <span className="text-xl min-w-[2rem] text-center">
                         {option.emoji || '○'}
                       </span>
-                      <span className="flex-1 font-medium text-slate-900">
-                        {option.text}
-                      </span>
+                      <span className="flex-1 font-medium text-slate-900">{option.text}</span>
                     </>
                   )}
                   <button
@@ -1135,7 +1164,9 @@ function OptionForm({
     }
     // For RATING questions, prevent adding more than 5 options
     if (questionType === 'RATING' && existingOptionsCount >= 5) {
-      alert('Rating questions can only have 5 options (1-5). Please edit existing options instead.');
+      alert(
+        'Rating questions can only have 5 options (1-5). Please edit existing options instead.'
+      );
       return;
     }
     onSave({ questionId, ...formData });
@@ -1150,10 +1181,13 @@ function OptionForm({
       <div className="bg-emerald-50/80 border border-emerald-200/60 rounded-xl p-4">
         <div className="flex items-center gap-2 mb-3">
           <span className="text-lg">✅</span>
-          <span className="font-semibold text-slate-900">True/False options added automatically</span>
+          <span className="font-semibold text-slate-900">
+            True/False options added automatically
+          </span>
         </div>
         <p className="text-sm text-slate-600 mb-4">
-          The question now has True and False options. You can add more questions or close this form.
+          The question now has True and False options. You can add more questions or close this
+          form.
         </p>
       </div>
     );
@@ -1267,7 +1301,7 @@ function OptionEditor({
     text: option.text,
     emoji: option.emoji || '',
   });
-  
+
   // For RATING questions, the text represents the value (1-5)
   // We'll show it as read-only or allow editing but ensure it stays sequential
   const isRating = questionType === 'RATING';
@@ -1290,12 +1324,12 @@ function OptionEditor({
   };
 
   return (
-    <div className={`${isRating ? 'bg-gradient-to-br from-blue-50 to-purple-50' : 'bg-blue-50/80'} border ${isRating ? 'border-blue-300/60' : 'border-blue-200/60'} rounded-xl p-4`}>
-      <form
-        onSubmit={handleSubmit}
-        onClick={(e) => e.stopPropagation()}
-        className="space-y-3"
-      >
+    <div
+      className={`${
+        isRating ? 'bg-gradient-to-br from-blue-50 to-purple-50' : 'bg-blue-50/80'
+      } border ${isRating ? 'border-blue-300/60' : 'border-blue-200/60'} rounded-xl p-4`}
+    >
+      <form onSubmit={handleSubmit} onClick={(e) => e.stopPropagation()} className="space-y-3">
         {isRating ? (
           // Simplified rating editor - visual and clean
           <div className="space-y-3">
@@ -1304,18 +1338,20 @@ function OptionEditor({
                 <span className="text-2xl font-bold text-slate-700">{option.text}</span>
               </div>
               <div className="flex-1">
-                <div className="text-sm font-semibold text-slate-700 mb-1">Rating {option.text}</div>
+                <div className="text-sm font-semibold text-slate-700 mb-1">
+                  Rating {option.text}
+                </div>
                 <div className="text-xs text-slate-500">Add an emoji label (optional)</div>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-2 flex-wrap">
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, emoji: '' })}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border-2 ${
-                  !formData.emoji 
-                    ? 'bg-white border-blue-400 text-blue-700 shadow-sm' 
+                  !formData.emoji
+                    ? 'bg-white border-blue-400 text-blue-700 shadow-sm'
                     : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                 }`}
               >
@@ -1327,8 +1363,8 @@ function OptionEditor({
                   type="button"
                   onClick={() => setFormData({ ...formData, emoji })}
                   className={`w-10 h-10 rounded-lg text-xl transition-all border-2 flex items-center justify-center ${
-                    formData.emoji === emoji 
-                      ? 'bg-blue-200 border-blue-400 shadow-md scale-110' 
+                    formData.emoji === emoji
+                      ? 'bg-blue-200 border-blue-400 shadow-md scale-110'
                       : 'bg-white border-slate-200 hover:border-blue-300 hover:scale-105'
                   }`}
                   title={`Add ${emoji} label`}
@@ -1337,7 +1373,7 @@ function OptionEditor({
                 </button>
               ))}
             </div>
-            
+
             {formData.emoji && (
               <div className="flex items-center gap-2 p-3 bg-white rounded-lg border border-blue-200">
                 <span className="text-2xl">{formData.emoji}</span>
@@ -1367,7 +1403,9 @@ function OptionEditor({
                   type="button"
                   onClick={() => setFormData({ ...formData, emoji })}
                   className={`px-2.5 py-1.5 rounded-lg text-lg transition-all ${
-                    formData.emoji === emoji ? 'bg-blue-200 shadow-sm' : 'bg-white hover:bg-slate-100'
+                    formData.emoji === emoji
+                      ? 'bg-blue-200 shadow-sm'
+                      : 'bg-white hover:bg-slate-100'
                   }`}
                   title={`Add ${emoji}`}
                 >
@@ -1377,7 +1415,7 @@ function OptionEditor({
             </div>
           </div>
         )}
-        
+
         <div className="flex gap-2 pt-2 border-t border-slate-200">
           <button
             type="submit"
@@ -1404,4 +1442,3 @@ function OptionEditor({
     </div>
   );
 }
-
