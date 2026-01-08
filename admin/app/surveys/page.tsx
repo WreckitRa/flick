@@ -48,9 +48,9 @@ export default function SurveysPage() {
   };
 
   const totalSurveys = data?.length || 0;
-  const publishedCount = data?.filter(s => s.published).length || 0;
+  const publishedCount = data?.filter((s: { published: boolean }) => s.published).length || 0;
   const draftCount = totalSurveys - publishedCount;
-  const totalAnswers = data?.reduce((sum, s) => sum + s.answerCount, 0) || 0;
+  const totalAnswers = data?.reduce((sum: number, s: { answerCount: number }) => sum + s.answerCount, 0) || 0;
 
   return (
     <AuthGuard>
@@ -192,7 +192,7 @@ export default function SurveysPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {data.map((survey, index) => (
+                {data.map((survey: { id: string; title: string; published: boolean; isGuestSurvey: boolean; type: string; questionCount: number; answerCount: number; description?: string | null; coinsReward: number; [key: string]: any }, index: number) => (
                   <div
                     key={survey.id}
                     className="glass rounded-2xl p-6 card-hover animate-slide-up"
@@ -286,7 +286,7 @@ export default function SurveysPage() {
             <CSVImportModal
               onImport={(csvContent) => importMutation.mutate({ csvContent })}
               onClose={() => setShowImportModal(false)}
-              isLoading={importMutation.isLoading}
+              isLoading={importMutation.isPending}
             />
           )}
         </div>

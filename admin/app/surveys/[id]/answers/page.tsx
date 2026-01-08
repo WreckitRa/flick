@@ -74,14 +74,14 @@ export default function SurveyAnswersPage() {
                         Total Submissions: {answers.length}
                       </h2>
                       <p className="text-sm text-slate-600">
-                        {answers.filter((a) => a.user.email?.startsWith('guest_') && a.user.email?.endsWith('@flick.guest')).length} guest users,{' '}
-                        {answers.filter((a) => !(a.user.email?.startsWith('guest_') && a.user.email?.endsWith('@flick.guest'))).length} registered users
+                        {answers.filter((a: { user: { email?: string } }) => a.user.email?.startsWith('guest_') && a.user.email?.endsWith('@flick.guest')).length} guest users,{' '}
+                        {answers.filter((a: { user: { email?: string } }) => !(a.user.email?.startsWith('guest_') && a.user.email?.endsWith('@flick.guest'))).length} registered users
                       </p>
                     </div>
                     <div className="flex items-center gap-6">
                       <div className="text-right">
                         <div className="text-3xl font-bold text-blue-600">
-                          🪙 {answers.reduce((sum, a) => sum + a.totalCoins, 0)}
+                          🪙 {answers.reduce((sum: number, a: { totalCoins: number }) => sum + a.totalCoins, 0)}
                         </div>
                         <div className="text-xs text-slate-500 font-medium">Total Coins Awarded</div>
                       </div>
@@ -89,7 +89,7 @@ export default function SurveyAnswersPage() {
                   </div>
                 </div>
 
-                {answers.map((userAnswer, index) => {
+                {answers.map((userAnswer: { user: { id: string; email?: string; displayName?: string; phone?: string }; submittedAt: string; totalCoins: number; answers: any[]; [key: string]: any }, index: number) => {
                   // Identify guest users by email pattern (guest_*@flick.guest)
                   const isGuest = userAnswer.user.email?.startsWith('guest_') && userAnswer.user.email?.endsWith('@flick.guest');
                   return (
@@ -124,7 +124,7 @@ export default function SurveyAnswersPage() {
                       </div>
 
                       <div className="border-t border-slate-200 pt-5 space-y-3">
-                        {userAnswer.answers.map((answer, answerIndex) => {
+                        {userAnswer.answers.map((answer: { questionText: string; questionType: string; coinsEarned: number; answer: string | string[]; questionOptions?: any[]; [key: string]: any }, answerIndex: number) => {
                           const selectedOptions = Array.isArray(answer.answer) ? answer.answer : [answer.answer];
                           
                           return (
@@ -148,8 +148,8 @@ export default function SurveyAnswersPage() {
                               <div className="mt-3">
                                 <p className="text-sm text-slate-700 font-semibold mb-2">Selected:</p>
                                 <div className="flex flex-wrap gap-2">
-                                  {selectedOptions.map((optionId, idx) => {
-                                    const option = answer.questionOptions?.find((o: any) => o.id === optionId);
+                                  {selectedOptions.map((optionId: string, idx: number) => {
+                                    const option = answer.questionOptions?.find((o: { id: string; emoji?: string; text?: string; [key: string]: any }) => o.id === optionId);
                                     return (
                                       <span
                                         key={idx}

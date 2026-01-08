@@ -81,13 +81,13 @@ export default function UsersPage() {
                 <div className="glass rounded-xl p-4">
                   <p className="text-sm font-medium text-slate-600 mb-1">Active Streaks</p>
                   <p className="text-2xl font-bold text-slate-900">
-                    {data.users.filter(u => u.profile?.currentStreak && u.profile.currentStreak > 0).length}
+                    {data.users.filter((u: { profile?: { currentStreak?: number } }) => u.profile?.currentStreak && u.profile.currentStreak > 0).length}
                   </p>
                 </div>
                 <div className="glass rounded-xl p-4">
                   <p className="text-sm font-medium text-slate-600 mb-1">With Profiles</p>
                   <p className="text-2xl font-bold text-slate-900">
-                    {data.users.filter(u => u.profile).length}
+                    {data.users.filter((u: { profile?: any }) => u.profile).length}
                   </p>
                 </div>
                 <div className="glass rounded-xl p-4">
@@ -167,7 +167,7 @@ export default function UsersPage() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-slate-100">
-                        {data.users.map((user) => (
+                        {data.users.map((user: { id: string; displayName?: string; email?: string; phone?: string; profile?: any; roles: string[]; createdAt: string; [key: string]: any }) => (
                           <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div>
@@ -230,7 +230,7 @@ export default function UsersPage() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex gap-1.5 flex-wrap">
-                                {user.roles.map((role) => (
+                                {user.roles.map((role: string) => (
                                   <span
                                     key={role}
                                     className="px-2.5 py-1 text-xs font-medium rounded-full bg-gradient-to-r from-blue-100 to-blue-50 text-blue-700 border border-blue-200/60"
