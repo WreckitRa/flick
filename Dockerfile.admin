@@ -8,16 +8,21 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
-# Copy only what admin needs (skip backend to avoid Prisma)
+# Copy workspace files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY tsconfig.json ./tsconfig.json
 COPY shared ./shared
 COPY admin ./admin
 
+# Copy backend source files for TypeScript type resolution only
+COPY backend/src ./backend/src
+COPY backend/tsconfig.json ./backend/tsconfig.json
+COPY backend/package.json ./backend/package.json
+
 # Set dummy DATABASE_URL to prevent Prisma errors
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 
-# Install only admin and shared dependencies
+# Install only admin and shared dependencies (backend not needed for runtime)
 RUN pnpm install --filter @flick/admin --filter @flick/shared --frozen-lockfile
 
 # Build Next.js app
