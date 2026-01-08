@@ -1,3 +1,3 @@
-import type { AppRouter } from '@flick/backend/src/server';
+import type { AppRouter } from '../../backend/src/server';
 
 export type { AppRouter };
