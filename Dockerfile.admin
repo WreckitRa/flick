@@ -18,13 +18,18 @@ COPY admin ./admin
 COPY backend/src ./backend/src
 COPY backend/tsconfig.json ./backend/tsconfig.json
 COPY backend/package.json ./backend/package.json
+COPY backend/prisma ./backend/prisma
 
 # Set dummy DATABASE_URL to prevent Prisma errors
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 
-# Install all dependencies needed for type resolution (skip Prisma scripts)
+# Install all dependencies needed for type resolution
 ENV PRISMA_SKIP_POSTINSTALL_GENERATE=true
 RUN pnpm install --filter @flick/admin --filter @flick/shared --filter @flick/backend --frozen-lockfile --ignore-scripts
+
+# Generate Prisma client for type resolution (doesn't need real DATABASE_URL)
+WORKDIR /app/backend
+RUN pnpm exec prisma generate
 
 # Build Next.js app
 WORKDIR /app/admin
